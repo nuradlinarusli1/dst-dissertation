@@ -5,7 +5,7 @@ from schema import get_initial_belief_state
 from prompt_builder import build_prompt
 from parser import extract_json
 
-MODEL_ID = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.2"
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -16,15 +16,16 @@ bnb_config = BitsAndBytesConfig(
 
 print("Loading model...")
 tokeniser = AutoTokenizer.from_pretrained(MODEL_ID)
+if tokeniser.pad_token is None:
+    tokeniser.pad_token = tokeniser.eos_token
+
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
-    torch_dtype=torch.float16
+    quantization_config=bnb_config
 )
 
-"""
-quantization_config=bnb_config
-"""
+
 belief = get_initial_belief_state()
 dialogue_history = ""
 
@@ -36,16 +37,25 @@ turns = [
 
 for turn in turns:
     prompt = build_prompt(dialogue_history, belief, turn)
-    inputs = tokeniser(prompt, return_tensors="pt").to(model.device)
+    messages = [
+        {"role": "system", "content": "You are a dialogue state tracker (DST) for MultiWOZ 2.2. Output ONLY valid JSON."},
+        {"role": "user", "content": prompt}
+    ]
+    chat_prompt = tokeniser.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    inputs = tokeniser(chat_prompt, return_tensors="pt").to(model.device)
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
             max_new_tokens=200,
             do_sample=False,
-            temperature=0.0
+            temperature=0.0,
+            eos_token_id = tokeniser.eos_token_id,
+            pad_token_id = tokeniser.eos_token_id
         )
 
-    decoded = tokeniser.decode(outputs[0], skip_special_tokens=True)
+    prompt_len = inputs["input_ids"].shape[1]
+    generated_only = outputs[0][prompt_len:]
+    decoded = tokeniser.decode(generated_only, skip_special_tokens=True)
 
     belief = extract_json(decoded)
     dialogue_history += f"\nUSER: {turn}\n"
