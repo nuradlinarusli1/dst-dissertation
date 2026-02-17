@@ -22,7 +22,8 @@ if tokeniser.pad_token is None:
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
-    quantization_config=bnb_config
+    quantization_config=bnb_config,
+    max_memory={0: "7GiB", "cpu": "48GiB"}
 )
 
 
@@ -42,15 +43,21 @@ for turn in turns:
         {"role": "user", "content": prompt}
     ]
     chat_prompt = tokeniser.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    inputs = tokeniser(chat_prompt, return_tensors="pt").to(model.device)
+    inputs = tokeniser(
+        chat_prompt, 
+        return_tensors="pt",
+        truncation=True,max_length=2048
+        ).to(model.device)
+    
     with torch.no_grad():
         outputs = model.generate(
             **inputs,
-            max_new_tokens=200,
+            max_new_tokens=80,
             do_sample=False,
             temperature=0.0,
             eos_token_id = tokeniser.eos_token_id,
-            pad_token_id = tokeniser.eos_token_id
+            pad_token_id = tokeniser.eos_token_id,
+            use_cache=False
         )
 
     prompt_len = inputs["input_ids"].shape[1]
