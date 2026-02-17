@@ -16,7 +16,7 @@ bnb_config = BitsAndBytesConfig(
 
 print("Loading model...")
 tokeniser = AutoTokenizer.from_pretrained(MODEL_ID)
-model = AutoModelForCausalLM.from_pretained(
+model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     quantisation_config=bnb_config
