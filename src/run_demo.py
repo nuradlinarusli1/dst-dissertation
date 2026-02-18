@@ -11,7 +11,7 @@ from huggingface_hub import login
 
 HF_TOKEN = "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"
 
-MODEL_ID = "meta-llama/Meta-Llama-3-8B-Instruct"
+MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
