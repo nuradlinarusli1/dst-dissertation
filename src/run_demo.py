@@ -9,7 +9,7 @@ from prompt_builder import build_prompt
 from parser import extract_json
 from huggingface_hub import login
 
-login(os.environ["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"])
+login("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")
 
 MODEL_ID = "meta-llama/Meta-Llama-3-8B-Instruct"
 
