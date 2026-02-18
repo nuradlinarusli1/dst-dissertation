@@ -17,7 +17,8 @@ bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
     bnb_4bit_use_double_quant=True,
-    bnb_4bit_compute_dtype=torch.float16
+    bnb_4bit_compute_dtype=torch.float16,
+    llm_int8_enable_fp32_cpu_offload=True
 )
 
 print("Loading model...")
@@ -29,7 +30,7 @@ model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     quantization_config=bnb_config,
-    max_memory={0: "4GiB", "cpu": "32GiB"},
+    max_memory={0: "5GiB", "cpu": "32GiB"},
     token = HF_TOKEN
 )
 
