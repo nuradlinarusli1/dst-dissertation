@@ -1,28 +1,30 @@
-import os
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
 from schema import get_initial_belief_state
 from prompt_builder import build_prompt
 from parser import extract_json
-from huggingface_hub import login
 
-HF_TOKEN = "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"
+MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
 
-MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
+def make_model_input(tokeniser, prompt: str) -> str:
+    if hasattr(tokeniser, "apply_chat_template") and getattr(tokeniser, "chat_template", None):
+        messages = [
+            {"role": "system", "content": "You are a dialogue state tracker (DST) for MultiWOZ 2.2. Output ONLY valid JSON. No extra text."},
+            {"role": "user", "content": prompt},
+        ]
+        return tokeniser.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    return prompt
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
     bnb_4bit_use_double_quant=True,
-    bnb_4bit_compute_dtype=torch.float16,
-    llm_int8_enable_fp32_cpu_offload=True
+    bnb_4bit_compute_dtype=torch.float16
 )
 
 print("Loading model...")
-tokeniser = AutoTokenizer.from_pretrained(MODEL_ID, token=HF_TOKEN)
+tokeniser = AutoTokenizer.from_pretrained(MODEL_ID)
 if tokeniser.pad_token is None:
     tokeniser.pad_token = tokeniser.eos_token
 
@@ -30,8 +32,7 @@ model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     quantization_config=bnb_config,
-    max_memory={0: "4GiB", "cpu": "28GiB"},
-    token=HF_TOKEN
+    max_memory={0: "5GiB", "cpu": "28GiB"}
 )
 
 belief = get_initial_belief_state()
@@ -45,17 +46,13 @@ turns = [
 
 for turn in turns:
     prompt = build_prompt(dialogue_history, belief, turn)
-    messages = [
-        {"role": "system", "content": "You are a Dialogue State Tracker for MultiWOZ 2.2. Return ONLY a valid JSON object matching the given schema. No extra text."},
-        {"role": "user", "content": prompt}
-    ]
-    chat_prompt = tokeniser.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    model_input = make_model_input(tokeniser, prompt)
     inputs = tokeniser(
-        chat_prompt, 
+        model_input, 
         return_tensors="pt",
         truncation=True,
         max_length=2048
-        ).to(model.hf_device_map.get("model.embed_tokens", "cuda"))
+        ).to(model.device)
     
     with torch.no_grad():
         outputs = model.generate(
