@@ -7,6 +7,9 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from schema import get_initial_belief_state
 from prompt_builder import build_prompt
 from parser import extract_json
+from huggingface_hub import login
+
+login(os.environ["HF_TOKEN"])
 
 MODEL_ID = "meta-llama/Meta-Llama-3-8B-Instruct"
 
