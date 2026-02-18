@@ -8,7 +8,7 @@ from schema import get_initial_belief_state
 from prompt_builder import build_prompt
 from parser import extract_json
 
-MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.2"
+MODEL_ID = "meta-llama/Meta-Llama-3-8B-Instruct"
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -42,7 +42,7 @@ turns = [
 for turn in turns:
     prompt = build_prompt(dialogue_history, belief, turn)
     messages = [
-        {"role": "system", "content": "You are a dialogue state tracker (DST) for MultiWOZ 2.2. Output ONLY valid JSON."},
+        {"role": "system", "content": "You are a Dialogue State Tracker for MultiWOZ 2.2. Return ONLY a valid JSON object matching the given schema. No extra text."},
         {"role": "user", "content": prompt}
     ]
     chat_prompt = tokeniser.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
