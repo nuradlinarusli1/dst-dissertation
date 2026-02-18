@@ -1,5 +1,5 @@
 import os
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments: True"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
@@ -9,7 +9,7 @@ from prompt_builder import build_prompt
 from parser import extract_json
 from huggingface_hub import login
 
-login("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")
+HF_TOKEN = "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"
 
 MODEL_ID = "meta-llama/Meta-Llama-3-8B-Instruct"
 
@@ -21,7 +21,7 @@ bnb_config = BitsAndBytesConfig(
 )
 
 print("Loading model...")
-tokeniser = AutoTokenizer.from_pretrained(MODEL_ID)
+tokeniser = AutoTokenizer.from_pretrained(MODEL_ID, token=HF_TOKEN)
 if tokeniser.pad_token is None:
     tokeniser.pad_token = tokeniser.eos_token
 
@@ -29,7 +29,8 @@ model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     quantization_config=bnb_config,
-    max_memory={0: "6GiB", "cpu": "32GiB"}
+    max_memory={0: "6GiB", "cpu": "32GiB"},
+    token = HF_TOKEN
 )
 
 
@@ -52,7 +53,8 @@ for turn in turns:
     inputs = tokeniser(
         chat_prompt, 
         return_tensors="pt",
-        truncation=True,max_length=2048
+        truncation=True,
+        max_length=2048
         ).to(model.device)
     
     with torch.no_grad():
