@@ -39,7 +39,7 @@ belief = get_initial_belief_state()
 dialogue_history = ""
 
 turns = [
-    "Hi, I'm looking for a cheap restaurant in the centre.",
+    "I'm looking for something affordable in the centre."
     "Actually make it moderate price.",
     "Can I get the address too?"
 ]
