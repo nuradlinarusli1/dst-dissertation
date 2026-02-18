@@ -30,7 +30,7 @@ model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     quantization_config=bnb_config,
-    max_memory={0: "5GiB", "cpu": "32GiB"},
+    max_memory={0: "4GiB", "cpu": "32GiB"},
     token = HF_TOKEN
 )
 
