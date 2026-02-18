@@ -11,7 +11,7 @@ from huggingface_hub import login
 
 HF_TOKEN = "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"
 
-MODEL_ID = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -29,10 +29,9 @@ model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     quantization_config=bnb_config,
-    max_memory={0: "6GiB", "cpu": "32GiB"},
+    max_memory={0: "4GiB", "cpu": "32GiB"},
     token = HF_TOKEN
 )
-
 
 belief = get_initial_belief_state()
 dialogue_history = ""
