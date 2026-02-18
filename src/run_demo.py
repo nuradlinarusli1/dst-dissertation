@@ -30,8 +30,8 @@ model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     quantization_config=bnb_config,
-    max_memory={0: "4GiB", "cpu": "32GiB"},
-    token = HF_TOKEN
+    max_memory={0: "4GiB", "cpu": "28GiB"},
+    token=HF_TOKEN
 )
 
 belief = get_initial_belief_state()
@@ -55,7 +55,7 @@ for turn in turns:
         return_tensors="pt",
         truncation=True,
         max_length=2048
-        ).to(model.device)
+        ).to(model.hf_device_map.get("model.embed_tokens", "cuda"))
     
     with torch.no_grad():
         outputs = model.generate(
