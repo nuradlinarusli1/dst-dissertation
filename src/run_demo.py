@@ -19,10 +19,7 @@ def make_model_input(tokeniser, prompt: str) -> str:
     return prompt
 
 bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_compute_dtype=torch.float16
+    load_in_8bit=True
 )
 
 print("Loading model...")
@@ -35,6 +32,13 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto",
     quantization_config=bnb_config
 )
+
+print("Model device (first param):", next(model.parameters()).device)
+print("Model config use_cache:", getattr(model.config, "use_cache", None))
+model.generation_config.do_sample = False
+model.generation_config.temperature = None
+model.generation_config.top_p = None
+model.generation_config.top_k = None
 
 belief = get_initial_belief_state()
 dialogue_history = ""
@@ -55,16 +59,14 @@ for turn in turns:
         max_length=2048
         ).to(model.device)
     
+    print("Prompt tokens:", inputs["input_ids"].shape[1])
     with torch.no_grad():
         t0 = time.time()
 
         outputs = model.generate(
             **inputs,
-            max_new_tokens=80,
+            max_new_tokens=50,
             do_sample=False,
-            temperature=0.0,
-            eos_token_id=tokeniser.eos_token_id,
-            pad_token_id=tokeniser.eos_token_id,
             use_cache=True
         )
 
