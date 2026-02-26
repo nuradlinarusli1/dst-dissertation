@@ -33,8 +33,7 @@ if tokeniser.pad_token is None:
 model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
-    quantization_config=bnb_config,
-    max_memory={0: "7GiB", "cpu": "28GiB"}
+    quantization_config=bnb_config
 )
 
 belief = get_initial_belief_state()
@@ -66,7 +65,7 @@ for turn in turns:
             temperature=0.0,
             eos_token_id=tokeniser.eos_token_id,
             pad_token_id=tokeniser.eos_token_id,
-            use_cache=True   # <-- IMPORTANT (change this!)
+            use_cache=True
         )
 
         print("Turn seconds:", round(time.time() - t0, 2))
