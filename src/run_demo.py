@@ -1,3 +1,5 @@
+import time
+
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
@@ -32,7 +34,7 @@ model = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map="auto",
     quantization_config=bnb_config,
-    max_memory={0: "5GiB", "cpu": "28GiB"}
+    max_memory={0: "7GiB", "cpu": "28GiB"}
 )
 
 belief = get_initial_belief_state()
@@ -55,15 +57,19 @@ for turn in turns:
         ).to(model.device)
     
     with torch.no_grad():
+        t0 = time.time()
+
         outputs = model.generate(
             **inputs,
             max_new_tokens=80,
             do_sample=False,
             temperature=0.0,
-            eos_token_id = tokeniser.eos_token_id,
-            pad_token_id = tokeniser.eos_token_id,
-            use_cache=False
+            eos_token_id=tokeniser.eos_token_id,
+            pad_token_id=tokeniser.eos_token_id,
+            use_cache=True   # <-- IMPORTANT (change this!)
         )
+
+        print("Turn seconds:", round(time.time() - t0, 2))
 
     prompt_len = inputs["input_ids"].shape[1]
     generated_only = outputs[0][prompt_len:]
