@@ -15,7 +15,7 @@ def get_allowed_values():
         "restaurant": {
             "area": ["centre", "north", "south", "east", "west", "none", "dontcare"],
             "pricerange": ["cheap", "moderate", "expensive", "none", "dontcare"],
-            "food": ["free-text", "none", "dontcare"],
+            "food": "free-text",
             "request": ["address", "phone", "postcode", "area", "pricerange", "food"]
         }
     }

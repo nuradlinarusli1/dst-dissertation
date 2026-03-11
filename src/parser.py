@@ -18,7 +18,7 @@ def extract_json(text: str) -> Dict[str, Any]:
     if not isinstance(text, str) or not text.strip():
         raise ValueError("Model output is empty or not a string.")
     
-    cleaned = text.replace("``json", "").replace("``", "").strip()
+    cleaned = text.replace("```json", "").replace("```", "").strip()
 
     start = cleaned.find("{")
     if start == -1:

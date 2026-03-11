@@ -8,6 +8,7 @@ from prompt_builder import build_prompt
 from parser import extract_json
 
 MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
+USE_FEW_SHOT = False
 
 def make_model_input(tokeniser, prompt: str) -> str:
     if hasattr(tokeniser, "apply_chat_template") and getattr(tokeniser, "chat_template", None):
@@ -45,8 +46,10 @@ turns = [
     "Can I get the address too?"
 ]
 
+print(f"\nRunning mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}\n")
+
 for turn in turns:
-    prompt = build_prompt(dialogue_history, belief, turn)
+    prompt = build_prompt(dialogue_history, belief, turn, USE_FEW_SHOT)
     model_input = make_model_input(tokeniser, prompt)
     inputs = tokeniser(
         model_input, 
@@ -74,7 +77,16 @@ for turn in turns:
     generated_only = outputs[0][prompt_len:]
     decoded = tokeniser.decode(generated_only, skip_special_tokens=True)
 
-    belief = extract_json(decoded)
+    print("\nRaw model output:")
+    print(decoded)
+    
+    try:
+        belief = extract_json(decoded)
+    except ValueError as e:
+        print("\nParse error:", e)
+        print("Keeping previous belief state.")
+        continue
+
     dialogue_history += f"\nUSER: {turn}\n"
     print("\nUpdated belief state:")
     print(belief)
