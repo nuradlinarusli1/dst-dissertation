@@ -27,11 +27,11 @@ User utterance:
 
 Updated belief state:
 {json.dumps(example["belief"], indent=2)}
-""")
+""". strip())
 
         example_block = "\n".join(example_text)
 
-    prompt = f"""
+    fixed_prefix = f"""
 You are a dialogue state tracker (DST) for the MultiWOZ 2.2 dataset.
 
 Task:
@@ -52,9 +52,12 @@ STRICT OUTPUT RULES (VERY IMPORTANT):
 
 Allowed values:
 {json.dumps(allowed, indent=2)}
+""".strip()
+    
+    if example_block:
+        fixed_prefix += f"\n\n{example_block}"
 
-{example_block}
-
+    variable_suffix = f"""
 Now update the belief state for the following turn.
 
 Dialogue history:
@@ -69,4 +72,20 @@ Latest user utterance:
 Return ONLY the updated belief state JSON:
 """.strip()
 
-    return prompt
+    return fixed_prefix, variable_suffix
+
+
+def build_safe_prompt(tokeniser, fixed_prefix: str, variable_suffix: str, max_length: int = 2048) -> str:
+    fixed_ids = tokeniser(fixed_prefix, add_special_tokens=False)["input_ids"]
+    suffix_ids = tokeniser(variable_suffix, add_special_tokens=False)["input_ids"]
+
+    allowed_suffix_len = max_length - len(fixed_ids) - 50
+
+    if allowed_suffix_len <= 0:
+        raise ValueError("Fixed prefix is too long. Shorten instructions or few-shot examples")
+    
+    if len(suffix_ids) > allowed_suffix_len:
+        suffix_ids = suffix_ids[-allowed_suffix_len:]
+
+    trimmed_suffix = tokeniser.decode(suffix_ids, skip_special_tokens=True)
+    return fixed_prefix + "\n\n" + trimmed_suffix

@@ -4,10 +4,10 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
 from schema import get_initial_belief_state
-from prompt_builder import build_prompt
+from prompt_builder import build_prompt, build_safe_prompt
 from parser import extract_json
 
-MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
+MODEL_ID = "Qwen/Qwen2.5-1.5B-Instruct"
 USE_FEW_SHOT = False
 
 def make_model_input(tokeniser, prompt: str) -> str:
@@ -49,13 +49,13 @@ turns = [
 print(f"\nRunning mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}\n")
 
 for turn in turns:
-    prompt = build_prompt(dialogue_history, belief, turn, USE_FEW_SHOT)
+    fixed_prefix, variable_suffix = build_prompt(dialogue_history, belief, turn, USE_FEW_SHOT)
+    prompt = build_safe_prompt(tokeniser, fixed_prefix, variable_suffix, max_length=2048)
     model_input = make_model_input(tokeniser, prompt)
     inputs = tokeniser(
         model_input, 
         return_tensors="pt",
-        truncation=True,
-        max_length=2048
+        truncation=False
         ).to(model.device)
     
     with torch.no_grad():
