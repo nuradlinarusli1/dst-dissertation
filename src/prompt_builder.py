@@ -3,7 +3,7 @@ from schema import get_allowed_values, get_initial_belief_state
 from few_shot_examples import FEW_SHOT_EXAMPLES
 
 
-def build_prompt(dialogue_history: str, prev_belief: dict, user_utterance: str, use_few_shot: bool = False) -> str:
+def build_prompt(dialogue_history: str, prev_belief: dict, user_utterance: str, use_few_shot: bool = False) -> tuple[str, str]  :
     allowed = get_allowed_values()
     required_structure = get_initial_belief_state()
 
@@ -38,17 +38,22 @@ Task:
 Given the dialogue history and the latest user utterance, update the belief state.
 
 STRICT OUTPUT RULES (VERY IMPORTANT):
-- Output ONLY valid JSON
+- Output ONLY valid JSON. No extra text.
+- Track ONLY the "restaurant" domain. 
+- Ignore all non-restaurant information in the dialogue history and user utterance.
 - Do NOT include explanations, markdown, or code fences
 - Output must match this exact JSON structure (same keys, same nesting):
 {json.dumps(required_structure, indent=2)}
-- Do NOT add new keys or new domains
+- Do NOT add new keys
+- Do NOT add new domains such as "hotel", "train", "attraction", "taxi" or "museum"
 - Keep previous values unless the user explicitly changes them
 - Use "none" if a slot is not specified
 - Use "dontcare" if the user has no preference
-- If the user specifies a cuisine type, copy it exactly into the "food" slot
-- For categorical slots, choose ONLY from the allowed values below
+- If the user specifies a cuisine type, copy it exactly into the "food" slot only if it refers to restaurant food
 - If the user requests information (e.g. address/phone/postcode), add it to the "request" list
+- The request field should contain ONLY restaurant request slots
+- Never output request slots from other domains
+- For categorical slots, choose ONLY from the allowed values below
 
 Allowed values:
 {json.dumps(allowed, indent=2)}
