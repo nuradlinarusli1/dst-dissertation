@@ -8,7 +8,7 @@ from prompt_builder import build_prompt, build_safe_prompt
 from parser import extract_json
 
 MODEL_ID = "Qwen/Qwen2.5-1.5B-Instruct"
-USE_FEW_SHOT = False
+USE_FEW_SHOT = True
 
 def make_model_input(tokeniser, prompt: str) -> str:
     if hasattr(tokeniser, "apply_chat_template") and getattr(tokeniser, "chat_template", None):
