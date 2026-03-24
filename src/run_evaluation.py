@@ -4,7 +4,7 @@ import json
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
 from schema import get_initial_belief_state
-from prompt_builder import build_prompt, build_safe_prompt
+from prompt_builder import build_prompt, build_safe_prompt, has_restaurant_turn
 from parser import extract_json
 
 MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
@@ -208,11 +208,3 @@ for slot in metrics["correct"]:
 
 joint_acc = metrics["joint_correct"] / metrics["joint_total"] if metrics["joint_total"] else 0.0
 print(f"\nJoint Goal Accuracy: {joint_acc:.3f} ({metrics['joint_correct']}/{metrics['joint_total']})")
-
-def has_restaurant_turn(dialogue: dict) -> bool:
-    for turn in dialogue.get("turns", []):
-        if turn.get("speaker") == "USER":
-            for frame in turn.get("frames", []):   
-                if frame.get("service") == "restaurant":
-                    return True
-    return False

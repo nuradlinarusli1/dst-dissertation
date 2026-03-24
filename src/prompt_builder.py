@@ -94,3 +94,11 @@ def build_safe_prompt(tokeniser, fixed_prefix: str, variable_suffix: str, max_le
 
     trimmed_suffix = tokeniser.decode(suffix_ids, skip_special_tokens=True)
     return fixed_prefix + "\n\n" + trimmed_suffix
+
+def has_restaurant_turn(dialogue: dict) -> bool:
+    for turn in dialogue.get("turns", []):
+        if turn.get("speaker") == "USER":
+            for frame in turn.get("frames", []):   
+                if frame.get("service") == "restaurant":
+                    return True
+    return False
