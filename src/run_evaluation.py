@@ -79,7 +79,7 @@ def update_slot_metrics(predicted: dict, gold: dict, metrics: dict):
 with open("../data/processed/dev.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
-subset = dialogues[:10]
+subset = dialogues[:2]
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
