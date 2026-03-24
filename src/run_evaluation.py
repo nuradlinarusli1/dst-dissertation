@@ -212,7 +212,6 @@ print(f"\nJoint Goal Accuracy: {joint_acc:.3f} ({metrics['joint_correct']}/{metr
 def has_restaurant_turn(dialogue: dict) -> bool:
     for turn in dialogue.get("turns", []):
         if turn.get("speaker") == "USER":
-            continue
             for frame in turn.get("frames", []):   
                 if frame.get("service") == "restaurant":
                     return True
