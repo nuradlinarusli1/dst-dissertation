@@ -76,7 +76,7 @@ def update_slot_metrics(predicted: dict, gold: dict, metrics: dict):
         if predicted_value == gold_value:
             metrics["correct"][slot] += 1
 
-with open("../data/dev.json", "r", encoding="utf-8") as f:
+with open("../data/processed/dev.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
 subset = dialogues[:10]
