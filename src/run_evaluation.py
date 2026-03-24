@@ -161,6 +161,8 @@ for dialogue in subset:
         generated_only = outputs[0][prompt_len:]
         decoded = tokeniser.decode(generated_only, skip_special_tokens=True)
 
+        print(decoded)
+
         try:
             predicted_belief = extract_json(decoded)
         except ValueError:
