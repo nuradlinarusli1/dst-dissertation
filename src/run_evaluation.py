@@ -79,7 +79,12 @@ def update_slot_metrics(predicted: dict, gold: dict, metrics: dict):
 with open("../data/processed/dev.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
-subset = dialogues[:2]
+restaurant_dialogues = [d for d in dialogues if has_restaurant_turn(d)]
+subset = restaurant_dialogues[:2]
+
+print(f"Total dialogues: {len(dialogues)}")
+print(f"Dialogues with restaurant turns: {len(restaurant_dialogues)}")
+print(f"Subset size: {len(subset)}")
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -203,3 +208,12 @@ for slot in metrics["correct"]:
 
 joint_acc = metrics["joint_correct"] / metrics["joint_total"] if metrics["joint_total"] else 0.0
 print(f"\nJoint Goal Accuracy: {joint_acc:.3f} ({metrics['joint_correct']}/{metrics['joint_total']})")
+
+def has_restaurant_turn(dialogue: dict) -> bool:
+    for turn in dialogue.get("turns", []):
+        if turn.get("speaker") == "USER":
+            continue
+            for frame in turn.get("frames", []):   
+                if frame.get("service") == "restaurant":
+                    return True
+    return False
