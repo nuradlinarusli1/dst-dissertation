@@ -165,12 +165,32 @@ for dialogue in subset:
 
         print(decoded)
 
+        def normalise_belief(belief: dict) -> dict:
+            restaurant = belief.get("restaurant", {}).copy()
+
+            for slot in ["area", "pricerange", "food"]:
+                value = restaurant.get(slot)
+                if isinstance(value, str):
+                    restaurant[slot] = value.lower()
+
+            request = restaurant.get("request", [])
+            if isinstance(request, list):
+                restaurant["request"] = sorted([r.lower() for r in restaurant["request"]])
+            else:
+                restaurant["request"] = []
+
+            belief["restaurant"] = restaurant
+            return belief
+
         try:
             predicted_belief = extract_json(decoded)
+            predicted_belief = normalise_belief(predicted_belief)
         except ValueError:
             parse_failures += 1
             dialogue_history += f"\nUSER: {user_utterance}\n"
             continue
+
+        gold_belief = normalise_belief(gold_belief)
 
         print(f"PREDICTED:", predicted_belief)
         print(f"GOLD:", gold_belief)
