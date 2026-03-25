@@ -164,8 +164,6 @@ for dialogue in subset:
         decoded = tokeniser.decode(generated_only, skip_special_tokens=True)
 
         print(decoded)
-        print(f"PREDICTED:", predicted_belief)
-        print(f"GOLD:", gold_belief)
 
         try:
             predicted_belief = extract_json(decoded)
@@ -174,6 +172,8 @@ for dialogue in subset:
             dialogue_history += f"\nUSER: {user_utterance}\n"
             continue
 
+        print(f"PREDICTED:", predicted_belief)
+        print(f"GOLD:", gold_belief)
         update_slot_metrics(predicted_belief, gold_belief, metrics)
 
         metrics["joint_total"] += 1
