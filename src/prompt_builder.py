@@ -55,9 +55,10 @@ STRICT OUTPUT RULES (VERY IMPORTANT):
 - Never output request slots from other domains
 - ONLY update the belief state based on USER UTTERANCES. Do NOT change the belief state based on SYSTEM responses.
 - If the system suggests a value, do NOT update the belief state until the user explicitly accepts it.
-- For categorical slots, choose ONLY from the allowed values below
-
-Allowed values:
+- The system utterances are used for context but do NOT directly change the belief state until the user confirms.
+- For categorical slots, choose ONLY from the allowed values. Do NOT output values that are not in the allowed list.
+- The format of the output MUST be exactly as the allowed values, without any modifications or additional text.
+- Allowed values:
 {json.dumps(allowed, indent=2)}
 """.strip()
     
