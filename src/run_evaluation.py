@@ -164,6 +164,8 @@ for dialogue in subset:
         decoded = tokeniser.decode(generated_only, skip_special_tokens=True)
 
         print(decoded)
+        print(f"PREDICTED:", predicted_belief)
+        print(f"GOLD:", gold_belief)
 
         try:
             predicted_belief = extract_json(decoded)
