@@ -77,7 +77,7 @@ with open("../data/processed/dev.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
 restaurant_dialogues = [d for d in dialogues if has_restaurant_turn(d)]
-subset = restaurant_dialogues[:2]
+subset = restaurant_dialogues[:10]
 
 print(f"Total dialogues: {len(dialogues)}")
 print(f"Dialogues with restaurant turns: {len(restaurant_dialogues)}")
