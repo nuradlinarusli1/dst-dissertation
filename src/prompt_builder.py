@@ -53,6 +53,8 @@ STRICT OUTPUT RULES (VERY IMPORTANT):
 - If the user requests information (e.g. address/phone/postcode/pricerange), add it to the "request" list
 - The request field should contain ONLY restaurant request slots
 - Never output request slots from other domains
+- ONLY update the belief state based on USER UTTERANCES. Do NOT change the belief state based on SYSTEM responses.
+- If the system suggests a value, do NOT update the belief state until the user explicitly accepts it.
 - For categorical slots, choose ONLY from the allowed values below
 
 Allowed values:
