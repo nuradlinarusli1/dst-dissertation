@@ -50,7 +50,7 @@ STRICT OUTPUT RULES (VERY IMPORTANT):
 - Use "none" if a slot is not specified
 - Use "dontcare" if the user has no preference
 - If the user specifies a cuisine type, copy it exactly into the "food" slot only if it refers to restaurant food
-- If the user requests information (e.g. address/phone/postcode), add it to the "request" list
+- If the user requests information (e.g. address/phone/postcode/pricerange), add it to the "request" list
 - The request field should contain ONLY restaurant request slots
 - Never output request slots from other domains
 - For categorical slots, choose ONLY from the allowed values below
