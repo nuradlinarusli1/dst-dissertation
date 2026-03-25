@@ -27,8 +27,6 @@ def extract_restaurant_belief_from_turn(turn: dict) -> dict | None:
     if turn.get("speaker") != "USER":
         return None
     
-    found_restaurant = False
-    
     for frame in turn.get("frames", []):
         if frame.get("service") != "restaurant":
             continue
@@ -37,7 +35,8 @@ def extract_restaurant_belief_from_turn(turn: dict) -> dict | None:
         if not state:
             continue
 
-        found_restaurant = True
+        if state.get("active_intent", "NONE") == "NONE":
+            return None
 
         slot_values = state.get("slot_values", {})
         requested_slots = state.get("requested_slots", [])
@@ -56,11 +55,9 @@ def extract_restaurant_belief_from_turn(turn: dict) -> dict | None:
                 clean_request = req.replace("restaurant-", "")
                 if clean_request not in belief["restaurant"]["request"]:
                     belief["restaurant"]["request"].append(clean_request)
-
-    if not found_restaurant:
-        return None
-
-    return belief
+        
+        return belief
+    return None
 
 def update_slot_metrics(predicted: dict, gold: dict, metrics: dict):
     for slot in ["area", "pricerange", "food", "request"]:
