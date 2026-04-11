@@ -316,7 +316,7 @@ for dialogue in subset:
         try:
             predicted_belief = extract_json(decoded)
             predicted_belief = normalise_belief(predicted_belief)
-        except ValueError:
+        except ValueError as e:
             parse_failures += 1
             print("PARSE FAILED:", e)
             print("RAW THAT FAILED:")
