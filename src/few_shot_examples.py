@@ -8,6 +8,10 @@ FEW_SHOT_EXAMPLES = [
                 "area": "none",
                 "pricerange": "none",
                 "food": "none",
+                "name": "none",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
                 "request": []
             }
         },
@@ -19,6 +23,10 @@ FEW_SHOT_EXAMPLES = [
                 "area": "centre",
                 "pricerange": "expensive",
                 "food": "none",
+                "name": "none",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
                 "request": []
             }
         }
@@ -30,17 +38,23 @@ FEW_SHOT_EXAMPLES = [
                 "area": "none",
                 "pricerange": "none",
                 "food": "polynesian",
+                "name": "none",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
                 "request": []
             }
         },
-
-        #Slot Correction (Update an Existing Slot Value)
-        "user": "Any other kind of food is fine.",
+        "user": "I dont mind any other type of food anymore",
         "belief": {
             "restaurant": {
                 "area": "none",
                 "pricerange": "none",
                 "food": "dontcare",
+                "name": "none",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
                 "request": []
             }
         },
@@ -52,19 +66,84 @@ FEW_SHOT_EXAMPLES = [
                 "area": "centre",
                 "pricerange": "moderate",
                 "food": "none",
+                "name": "none",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
                 "request": []
             }
         },
-
-        #Request Slot (Add Information Requests)
         "user": "Could I get the phone number of the restaurant?",
         "belief": {
             "restaurant": {
                 "area": "centre",
                 "pricerange": "moderate",
                 "food": "none",
+                "name": "none",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
                 "request": ["phone"]
             }
         }
+    },
+    {
+        "dialogue_history": "",
+        "prev_belief":{
+            "restaurant": {
+                "area": "south",
+                "pricerange": "expensive",
+                "food": "italian",
+                "name": "none",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
+                "request": []
+            }
+        },
+        "system": "Frankie and Bennys is an expensive Italian eatery in the south part of town. Would you like any additional information about this restaurant?",
+        "user": "address and phone number",
+        "belief": {
+            "restaurant": {
+                "area": "south",
+                "pricerange": "expensive",
+                "food": "italian",
+                "name": "none",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
+                "request": ["phone", "address"]
+            }
+        }
+    },
+    {
+        "dialogue_history": "",
+        "prev_belief":{
+            "restaurant": {
+                "area": "south",
+                "pricerange": "expensive",
+                "food": "italian",
+                "name": "none",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
+                "request": ["phone", "address"]
+            }
+        },
+        "system": "The address is Cambridge Leisure Park Clifton Way Cherry Hinton. The phone number is 01223 412430.",
+        "user": "Thank you, goodbye.",
+        "belief": {
+            "restaurant": {
+                "area": "south",
+                "pricerange": "expensive",
+                "food": "italian",
+                "name": "none",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
+                "request": []
+            }
+        }
     }
+
 ]

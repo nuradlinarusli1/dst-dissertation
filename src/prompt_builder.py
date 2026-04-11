@@ -39,7 +39,9 @@ Given the dialogue history and the latest user utterance, update the belief stat
 
 STRICT OUTPUT RULES (VERY IMPORTANT):
 - Output ONLY valid JSON. NO extra text.
-- Start from the previous belief state and ONLY update based on the latest USER utterance. Do NOT change the belief state based on SYSTEM responses.
+- Start from the previous belief state and ONLY update based on the latest USER utterance, with SYSTEM utterances used only to determine if a request has been fulfilled. Do NOT change any slot values unless the USER explicitly changes them or they are fulfilled by the SYSTEM.
+- Do NOT add or change constraint slot values based on SYSTEM responses unless the USER explicitly confirms or repeats them.
+- Only include requests which have not been fulfilled yet. If the system has provided the requested information, remove it from the  request list in the belief state.
 - Keep all previous values unless the user explicitly changes them.
 - Track ONLY these domains: "restaurant", "hotel", "train". Do NOT include any other domains such as "attraction", "taxi", "museum" etc.
 - Use "none" ONLY for slots that are still unknown and have never been filled.
