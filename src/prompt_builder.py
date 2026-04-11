@@ -40,7 +40,6 @@ Given the dialogue history and the latest user utterance, update the belief stat
 STRICT OUTPUT RULES (VERY IMPORTANT):
 - Output ONLY valid JSON. NO extra text.
 - Start from the previous belief state and ONLY update based on the latest USER utterance. Do NOT change the belief state based on SYSTEM responses.
-- SYSTEM responses are for context only. It is only updated if it is repeated or explicitly mentioned by the USER. Do NOT update based on SYSTEM utterances that are not explicitly referenced by the USER.
 - Keep all previous values unless the user explicitly changes them.
 - Track ONLY these domains: "restaurant", "hotel", "train". Do NOT include any other domains such as "attraction", "taxi", "museum" etc.
 - Use "none" ONLY for slots that are still unknown and have never been filled.

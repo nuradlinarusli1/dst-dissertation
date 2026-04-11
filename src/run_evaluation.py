@@ -35,10 +35,14 @@ def extract_gold_belief_from_turn(turn: dict) -> dict | None:
     if turn.get("speaker") != "USER":
         return None
     
+    print("\n--- EXTRACTING GOLD ---")
+    
     belief = get_initial_belief_state()
     found_relevant_info = False
     
     for frame in turn.get("frames", []):
+        print("\nSERVICE:", frame.get("service"))
+        print("STATE:", json.dumps(frame.get("state", {}), indent=2))
         service = frame.get("service")
         if service not in ALLOWED_DOMAINS:
             continue
@@ -52,11 +56,6 @@ def extract_gold_belief_from_turn(turn: dict) -> dict | None:
 
         slot_values = state.get("slot_values", {})
         requested_slots = state.get("requested_slots", [])
-
-        print("\n--- DEBUG TURN ---")
-        print("SERVICE:", service)
-        print("STATE SLOT_VALUES:", json.dumps(slot_values, indent=2))
-        print("FRAME SLOTS:", json.dumps(frame.get("slots", []), indent=2))
 
         for full_slot_name, values in slot_values.items():
             if "-" not in full_slot_name:
@@ -224,7 +223,7 @@ with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f
     dialogues = json.load(f)
 
 #restaurant_dialogues = [d for d in dialogues if has_restaurant_turn(d)]
-subset = [dialogues[6]]
+subset = [dialogues[7]]
 
 print(f"Total dialogues: {len(dialogues)}")
 print(f"Subset size: {len(subset)}")
@@ -282,6 +281,11 @@ for dialogue in subset:
         MAX_HISTORY_TURNS = 4
         recent_history = dialogue_history[-MAX_HISTORY_TURNS:]
         dialogue_history_str = "\n".join(recent_history)
+
+        print("\n==============================")
+        print("USER UTTERANCE:", utterance)
+        print("RAW FRAMES FROM DATASET:")
+        print(json.dumps(turn.get("frames", []), indent=2))
 
         gold_belief = extract_gold_belief_from_turn(turn)
         if gold_belief is None:
