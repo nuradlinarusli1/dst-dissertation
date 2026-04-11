@@ -215,7 +215,7 @@ def normalise_belief(belief: dict) -> dict:
 
     return normalised
 
-with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f:
+with open("../data/processed/train_multi-domain.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
 #restaurant_dialogues = [d for d in dialogues if has_restaurant_turn(d)]
