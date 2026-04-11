@@ -35,14 +35,10 @@ def extract_gold_belief_from_turn(turn: dict) -> dict | None:
     if turn.get("speaker") != "USER":
         return None
     
-    print("\n--- EXTRACTING GOLD ---")
-    
     belief = get_initial_belief_state()
     found_relevant_info = False
     
     for frame in turn.get("frames", []):
-        print("\nSERVICE:", frame.get("service"))
-        print("STATE:", json.dumps(frame.get("state", {}), indent=2))
         service = frame.get("service")
         if service not in ALLOWED_DOMAINS:
             continue
@@ -223,7 +219,7 @@ with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f
     dialogues = json.load(f)
 
 #restaurant_dialogues = [d for d in dialogues if has_restaurant_turn(d)]
-subset = [dialogues[7]]
+subset = [dialogues[2]]
 
 print(f"Total dialogues: {len(dialogues)}")
 print(f"Subset size: {len(subset)}")
@@ -283,7 +279,6 @@ for dialogue in subset:
         dialogue_history_str = "\n".join(recent_history)
 
         print("\n==============================")
-        print("USER UTTERANCE:", utterance)
         print("RAW FRAMES FROM DATASET:")
         print(json.dumps(turn.get("frames", []), indent=2))
 
@@ -322,9 +317,6 @@ for dialogue in subset:
         prompt_len = inputs["input_ids"].shape[1]
         generated_only = outputs[0][prompt_len:]
         decoded = tokeniser.decode(generated_only, skip_special_tokens=True)
-
-        print("\nRAW MODEL OUTPUT:")
-        print(decoded)
 
         try:
             predicted_belief = extract_json(decoded)
