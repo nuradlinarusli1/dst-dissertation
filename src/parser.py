@@ -22,17 +22,18 @@ def extract_json(text: str) -> Dict[str, Any]:
 
     start = cleaned.find("{")
     if start == -1:
-        match = re.search(r"\{", cleaned)
+        match = re.search(r"\{.*?\}", cleaned)
         
         if not match:
             raise ValueError("No JSON object in model output.")
         start = match.start()
 
     decoder = json.JSONDecoder()
+
     try:
         obj, end = decoder.raw_decode(cleaned[start:])
     except json.JSONDecodeError as e:
-        brace_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+        brace_match = re.search(r"\{.*?\}", cleaned, re.DOTALL)
         if brace_match:
             candidate = brace_match.group(0)
             try:

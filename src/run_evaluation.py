@@ -1,16 +1,26 @@
 import time
 import torch
 import json
+import re
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
-from schema import get_initial_belief_state
-from prompt_builder import build_prompt, build_safe_prompt, has_restaurant_turn
+from schema import get_initial_belief_state, get_allowed_values
+from prompt_builder import build_prompt, build_safe_prompt
 from parser import extract_json
 
 MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
 USE_FEW_SHOT = False
 
+# "oracle" evaluation mode: Use the gold belief state for the next turn
+# "rollout" evaluation mode: Use the predicted belief state for the next turn
+EVAL_MODE = "oracle"
+
 print(f"\nRunning mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}\n")
+print(f"\nEvaluation mode: {EVAL_MODE}\n")
+
+ALLOWED_VALUES = get_allowed_values()
+INITIAL_BELIEF = get_initial_belief_state()
+ALLOWED_DOMAINS = set(ALLOWED_VALUES.keys())
 
 def make_model_input(tokeniser, prompt: str) -> str:
     if hasattr(tokeniser, "apply_chat_template") and getattr(tokeniser, "chat_template", None):
@@ -21,66 +31,197 @@ def make_model_input(tokeniser, prompt: str) -> str:
         return tokeniser.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     return prompt
 
-def extract_restaurant_belief_from_turn(turn: dict) -> dict | None:
-    belief = get_initial_belief_state()
-
+def extract_gold_belief_from_turn(turn: dict) -> dict | None:
     if turn.get("speaker") != "USER":
         return None
     
+    belief = get_initial_belief_state()
+    found_relevant_info = False
+    
     for frame in turn.get("frames", []):
-        if frame.get("service") != "restaurant":
+        service = frame.get("service")
+        if service not in ALLOWED_DOMAINS:
+            continue
+
+        if service not in belief:
             continue
 
         state = frame.get("state", {})
-        if not state:
+        if not isinstance(state, dict):
             continue
-
-        if state.get("active_intent", "NONE") == "NONE":
-            return None
 
         slot_values = state.get("slot_values", {})
         requested_slots = state.get("requested_slots", [])
 
-        if "restaurant-area" in slot_values and slot_values["restaurant-area"]: 
-            belief["restaurant"]["area"] = slot_values["restaurant-area"][0]
+        for full_slot_name, values in slot_values.items():
+            if "-" not in full_slot_name:
+                continue
+            if not isinstance(values, list) or not values:
+                continue
 
-        if "restaurant-pricerange" in slot_values and slot_values["restaurant-pricerange"]:
-            belief["restaurant"]["pricerange"] = slot_values["restaurant-pricerange"][0]
+            domain, slot = full_slot_name.split("-", 1)
 
-        if "restaurant-food" in slot_values and slot_values["restaurant-food"]:
-            belief["restaurant"]["food"] = slot_values["restaurant-food"][0]
+            if domain != service:
+                continue
+            if domain not in belief or slot not in belief[domain]:
+                continue
+            if slot == "request":
+                continue
+
+            belief[domain][slot] = values[0]
+            found_relevant_info = True
 
         for req in requested_slots:
-            if req.startswith("restaurant-"):
-                clean_request = req.replace("restaurant-", "")
-                if clean_request not in belief["restaurant"]["request"]:
-                    belief["restaurant"]["request"].append(clean_request)
-        
-        return belief
-    return None
+            if "-" not in req:
+                continue
+
+            domain, slot = req.split("-", 1)
+
+            if domain != service:
+                continue
+            if domain not in belief:
+                continue
+            if "request" not in belief[domain]:
+                continue
+
+            if slot in ALLOWED_VALUES[domain]["request"] and slot not in belief[domain]["request"]:
+                belief[domain]["request"].append(slot)
+                found_relevant_info = True
+    return belief if found_relevant_info else None
 
 def update_slot_metrics(predicted: dict, gold: dict, metrics: dict):
-    for slot in ["area", "pricerange", "food", "request"]:
-        metrics["total"][slot] += 1
+    for domain in gold:
+        if domain not in predicted:
+            continue
 
-        predicted_value = predicted["restaurant"][slot]
-        gold_value = gold["restaurant"][slot]
+        for slot in gold[domain]:
+            if slot not in predicted[domain]:
+                continue
 
-        if slot == "request":
-            predicted_value = sorted(predicted_value)
-            gold_value = sorted(gold_value)
-        
-        if predicted_value == gold_value:
-            metrics["correct"][slot] += 1
+            metrics["total"][domain][slot] += 1
 
-with open("../data/processed/dev.json", "r", encoding="utf-8") as f:
+            predicted_value = predicted[domain][slot]
+            gold_value = gold[domain][slot]
+
+            if slot == "request":
+                predicted_value = sorted(predicted_value) if isinstance(predicted_value, list) else []
+                gold_value = sorted(gold_value) if isinstance(gold_value, list) else []
+
+            if predicted_value == gold_value:
+                metrics["correct"][domain][slot] += 1
+
+def normalise_text(value: str) -> str:
+    if not isinstance(value, str):
+        return value
+    
+    value = value.lower().strip()
+    value = re.sub(r"\s+", " ", value)
+
+    value_map = {
+        "city centre": "centre",
+        "city center": "centre",
+        "center": "centre",
+        "guesthouses": "guesthouse",
+        "guest house": "guesthouse",
+        "classic british": "british",
+        "modern european": "european",
+        "free internet": "free",
+        "free wifi": "free",
+        "free parking": "free",
+    }
+
+    return value_map.get(value, value)
+
+def normalise_number_string(value:str) -> str:
+    number_map = {
+        "one": "1",
+        "two": "2",
+        "three": "3",
+        "four": "4",
+        "five": "5",
+        "six": "6",
+        "seven": "7",
+        "eight": "8",
+        "nine": "9",
+        "ten": "10",
+        "eleven": "11",
+        "twelve": "12",
+        "thirteen": "13",
+        "fourteen": "14",
+        "fifteen": "15",
+        "zero": "0"
+    }
+
+    value = normalise_text(value)
+    if value.isdigit():
+        return str(int(value))
+    return number_map.get(value, value)
+
+def normalise_time_string(value: str) -> str:
+    if not isinstance(value, str):
+        return value
+            
+    value = value.lower().strip()
+    value = value.replace(".", ":")
+    value = re.sub(r"\s*:\s*", ":", value)
+
+    if re.match(r"^\d{1,2}:\d{2}$", value):
+        hour, minute = value.split(":")
+        return f"{int(hour):02d}:{minute}"
+    
+    match = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", value)
+    if match:
+        hour = int(match.group(1))
+        minute = int(match.group(2)) if match.group(2) else 0
+        period = match.group(3)
+    
+        if period == "pm" and hour != 12:
+            hour += 12
+        if period == "am" and hour == 12:
+            hour = 0
+
+        return f"{hour:02d}:{minute:02d}"
+
+    return value
+
+def normalise_belief(belief: dict) -> dict:
+    normalised = get_initial_belief_state()
+
+    for domain, slots in normalised.items():
+        domain_data = belief.get(domain, {}) if isinstance(belief, dict) else {}
+
+        for slot in slots:
+            if slot == "request":
+                request_values = domain_data.get("request", [])
+                if isinstance(request_values, list):
+                    cleaned = []
+                    for v in request_values:
+                        item = normalise_text(str(v))
+                        if item in ALLOWED_VALUES[domain]["request"]:
+                            cleaned.append(item)
+                    normalised[domain]["request"] = sorted(set(cleaned))
+                else:
+                    normalised[domain]["request"] = []
+            else:
+                value = domain_data.get(slot, slots[slot])
+                if slot in {"bookpeople", "bookstay", "stars"}:
+                    value = normalise_number_string(value)
+                elif slot in {"booktime", "leaveat", "arriveby"}:
+                    value = normalise_time_string(value)
+                else:
+                    value = normalise_text(value)
+
+                normalised[domain][slot] = value
+
+    return normalised
+
+with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
-restaurant_dialogues = [d for d in dialogues if has_restaurant_turn(d)]
-subset = restaurant_dialogues[:10]
+#restaurant_dialogues = [d for d in dialogues if has_restaurant_turn(d)]
+subset = dialogues[:10]
 
 print(f"Total dialogues: {len(dialogues)}")
-print(f"Dialogues with restaurant turns: {len(restaurant_dialogues)}")
 print(f"Subset size: {len(subset)}")
 
 bnb_config = BitsAndBytesConfig(
@@ -102,14 +243,20 @@ model = AutoModelForCausalLM.from_pretrained(
 )
 
 metrics = {
-    "correct": {"area": 0, "pricerange": 0, "food": 0, "request": 0},
-    "total": {"area": 0, "pricerange": 0, "food": 0, "request": 0},
+    "correct": {
+        domain: {slot: 0 for slot in slots}
+        for domain, slots in INITIAL_BELIEF.items()
+    },
+    "total": {
+        domain: {slot: 0 for slot in slots}
+        for domain, slots in INITIAL_BELIEF.items()
+    },
     "joint_correct": 0,
     "joint_total": 0,
 }
 
 evaluated_turns = 0
-non_restaurant_skips = 0
+skipped_no_state_turns = 0
 parse_failures = 0
 
 for dialogue in subset:
@@ -127,9 +274,9 @@ for dialogue in subset:
         if turn.get("speaker") != "USER":
             continue
 
-        gold_belief = extract_restaurant_belief_from_turn(turn)
+        gold_belief = extract_gold_belief_from_turn(turn)
         if gold_belief is None:
-            non_restaurant_skips += 1
+            skipped_no_state_turns += 1
             dialogue_history += f"\nUSER: {utterance}\n"
             continue
 
@@ -149,7 +296,7 @@ for dialogue in subset:
 
             outputs = model.generate(
                 **inputs,
-                max_new_tokens=80,
+                max_new_tokens=129,
                 do_sample=False,
                 temperature=0.0,
                 eos_token_id=tokeniser.eos_token_id,
@@ -163,24 +310,8 @@ for dialogue in subset:
         generated_only = outputs[0][prompt_len:]
         decoded = tokeniser.decode(generated_only, skip_special_tokens=True)
 
+        print("\nRAW MODEL OUTPUT:")
         print(decoded)
-
-        def normalise_belief(belief: dict) -> dict:
-            restaurant = belief.get("restaurant", {}).copy()
-
-            for slot in ["area", "pricerange", "food"]:
-                value = restaurant.get(slot)
-                if isinstance(value, str):
-                    restaurant[slot] = value.lower()
-
-            request = restaurant.get("request", [])
-            if isinstance(request, list):
-                restaurant["request"] = sorted([r.lower() for r in restaurant["request"]])
-            else:
-                restaurant["request"] = []
-
-            belief["restaurant"] = restaurant
-            return belief
 
         try:
             predicted_belief = extract_json(decoded)
@@ -194,36 +325,37 @@ for dialogue in subset:
 
         print(f"PREDICTED:", predicted_belief)
         print(f"GOLD:", gold_belief)
+
         update_slot_metrics(predicted_belief, gold_belief, metrics)
 
         metrics["joint_total"] += 1
-
-        predicted_restaurant = predicted_belief["restaurant"].copy()
-        gold_restaurant = gold_belief["restaurant"].copy()
-
-        predicted_restaurant["request"] = sorted(predicted_restaurant["request"])
-        gold_restaurant["request"] = sorted(gold_restaurant["request"])
-
-        if predicted_restaurant == gold_restaurant:
+        if predicted_belief == gold_belief:
             metrics["joint_correct"] += 1
 
         evaluated_turns += 1
-        belief = predicted_belief
-        #belief = gold_belief //Optional Additional Evaluation to compare if each turn is initialised with the correct state (to test evaluation of one slot)
+
+        if EVAL_MODE == "oracle":
+            belief = gold_belief
+        elif EVAL_MODE == "rollout":
+            belief = predicted_belief
+        else:
+            raise ValueError(f"Invalid EVAL_MODE: {EVAL_MODE}. Must be 'oracle' or 'rollout'.")
 
         dialogue_history += f"\nUSER: {user_utterance}\n"
 
 print("\nEvaluation Summary")
 print(f"Evaluated Turns: {evaluated_turns}")
-print(f"Non-evaluable Turns: {non_restaurant_skips}")
+print(f"Skipped Turns (No State): {skipped_no_state_turns}")
 print(f"Parse Failures: {parse_failures}")
 
 print("\nSlot Accuracy")
-for slot in metrics["correct"]:
-    total = metrics["total"][slot]
-    correct = metrics["correct"][slot]
-    acc = correct / total if total else 0.0
-    print(f"{slot}: {acc:.3f} ({correct}/{total})")
+for domain in metrics["correct"]:
+    print(f"\n{domain.upper()}")
+    for slot in metrics["correct"][domain]:
+        total = metrics["total"][domain][slot]
+        correct = metrics["correct"][domain][slot]
+        acc = correct / total if total else 0.0
+        print(f"  {slot}: {acc:.3f} ({correct}/{total})")
 
 joint_acc = metrics["joint_correct"] / metrics["joint_total"] if metrics["joint_total"] else 0.0
 print(f"\nJoint Goal Accuracy: {joint_acc:.3f} ({metrics['joint_correct']}/{metrics['joint_total']})")

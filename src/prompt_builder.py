@@ -38,26 +38,14 @@ Task:
 Given the dialogue history and the latest user utterance, update the belief state.
 
 STRICT OUTPUT RULES (VERY IMPORTANT):
-- Output ONLY valid JSON. No extra text.
-- Track ONLY the "restaurant" domain. 
-- Ignore all non-restaurant information in the dialogue history and user utterance.
-- Do NOT include explanations, markdown, or code fences
+- Output ONLY valid JSON. NO extra text.
+- Start from the previous belief state and ONLY update based on the latest USER utterance. Do NOT change the belief state based on SYSTEM responses.
+- Keep all previous values unless the user explicitly changes them.
+- Track ONLY these domains: "restaurant", "hotel", "train". Do NOT include any other domains such as "attraction", "taxi", "museum" etc.
+- Use "none" ONLY for slots that are still unknown and have never been filled.
+- Use "dontcare" if the user has explicitly indicated no preference for a slot, for example "any", "no preference" or similar.
 - Output must match this exact JSON structure (same keys, same nesting):
 {json.dumps(required_structure, indent=2)}
-- Do NOT add new keys
-- Do NOT add new domains such as "hotel", "train", "attraction", "taxi" or "museum"
-- Keep previous values unless the user explicitly changes them
-- Use "none" if a slot is not specified
-- Use "dontcare" if the user has no preference
-- If the user specifies a cuisine type, copy it exactly into the "food" slot only if it refers to restaurant food
-- If the user requests information (e.g. address/phone/postcode/pricerange), add it to the "request" list
-- The request field should contain ONLY restaurant request slots
-- Never output request slots from other domains
-- ONLY update the belief state based on USER UTTERANCES. Do NOT change the belief state based on SYSTEM responses.
-- If the system suggests a value, do NOT update the belief state until the user explicitly accepts it.
-- The system utterances are used for context but do NOT directly change the belief state until the user confirms.
-- For categorical slots, choose ONLY from the allowed values. Do NOT output values that are not in the allowed list.
-- The format of the output MUST be exactly as the allowed values, without any modifications or additional text.
 - Allowed values:
 {json.dumps(allowed, indent=2)}
 """.strip()
@@ -97,11 +85,3 @@ def build_safe_prompt(tokeniser, fixed_prefix: str, variable_suffix: str, max_le
 
     trimmed_suffix = tokeniser.decode(suffix_ids, skip_special_tokens=True)
     return fixed_prefix + "\n\n" + trimmed_suffix
-
-def has_restaurant_turn(dialogue: dict) -> bool:
-    for turn in dialogue.get("turns", []):
-        if turn.get("speaker") == "USER":
-            for frame in turn.get("frames", []):   
-                if frame.get("service") == "restaurant":
-                    return True
-    return False
