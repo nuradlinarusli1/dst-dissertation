@@ -53,6 +53,11 @@ def extract_gold_belief_from_turn(turn: dict) -> dict | None:
         slot_values = state.get("slot_values", {})
         requested_slots = state.get("requested_slots", [])
 
+        print("\n--- DEBUG TURN ---")
+        print("SERVICE:", service)
+        print("STATE SLOT_VALUES:", json.dumps(slot_values, indent=2))
+        print("FRAME SLOTS:", json.dumps(frame.get("slots", []), indent=2))
+
         for full_slot_name, values in slot_values.items():
             if "-" not in full_slot_name:
                 continue
@@ -215,11 +220,11 @@ def normalise_belief(belief: dict) -> dict:
 
     return normalised
 
-with open("../data/processed/train_multi-domain.json", "r", encoding="utf-8") as f:
+with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
 #restaurant_dialogues = [d for d in dialogues if has_restaurant_turn(d)]
-subset = dialogues[:3]
+subset = [dialogues[6]]
 
 print(f"Total dialogues: {len(dialogues)}")
 print(f"Subset size: {len(subset)}")
@@ -281,7 +286,7 @@ for dialogue in subset:
         gold_belief = extract_gold_belief_from_turn(turn)
         if gold_belief is None:
             skipped_no_state_turns += 1
-            dialogue_history.append(f"SYSTEM (context only, do not copy values): {utterance}")
+            dialogue_history.append(f"USER: {utterance}")
             continue
 
         user_utterance = utterance
@@ -326,7 +331,7 @@ for dialogue in subset:
             print("RAW THAT FAILED:")
             print(decoded)
             print("RAW OUTPUT LENGTH:", len(decoded))
-            dialogue_history.append(f"SYSTEM (context only, do not copy values): {utterance}")
+            dialogue_history.append(f"USER: {utterance}")
             continue
 
         gold_belief = normalise_belief(gold_belief)
@@ -349,7 +354,7 @@ for dialogue in subset:
         else:
             raise ValueError(f"Invalid EVAL_MODE: {EVAL_MODE}. Must be 'oracle' or 'rollout'.")
 
-        dialogue_history.append(f"SYSTEM (context only, do not copy values): {utterance}")
+        dialogue_history.append(f"USER: {utterance}")
 
 print("\nEvaluation Summary")
 print(f"Evaluated Turns: {evaluated_turns}")
