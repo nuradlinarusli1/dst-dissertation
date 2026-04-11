@@ -318,6 +318,9 @@ for dialogue in subset:
             predicted_belief = normalise_belief(predicted_belief)
         except ValueError:
             parse_failures += 1
+            print("PARSE FAILED:", e)
+            print("RAW THAT FAILED:")
+            print(decoded)
             dialogue_history += f"\nUSER: {user_utterance}\n"
             continue
 
