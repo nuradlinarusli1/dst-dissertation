@@ -2,10 +2,10 @@ import json
 from pathlib import Path
 from typing import Any
 
-ALLOWED_DOMAINS = {"restaurant"}
+ALLOWED_DOMAINS = {"restaurant", "hotel", "train"}
 
 INPUT_PATH = Path("data/processed/train.json")
-OUTPUT_PATH = Path("data/processed/train_restaurant.json")
+OUTPUT_PATH = Path("data/processed/train_multi-domain.json")
 # IDS_OUTPUT_PATH = Path("data/processed/test_filtered_ids.txt")
 
 def extract_domains_from_turn(turn: dict[str, Any]) -> set[str]:

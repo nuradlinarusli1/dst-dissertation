@@ -219,7 +219,7 @@ with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f
     dialogues = json.load(f)
 
 #restaurant_dialogues = [d for d in dialogues if has_restaurant_turn(d)]
-subset = dialogues[:10]
+subset = dialogues[:3]
 
 print(f"Total dialogues: {len(dialogues)}")
 print(f"Subset size: {len(subset)}")
@@ -261,28 +261,32 @@ parse_failures = 0
 
 for dialogue in subset:
     belief = get_initial_belief_state()
-    dialogue_history = ""
+    dialogue_history = []
 
     for turn in dialogue["turns"]:
         speaker = turn.get("speaker")
         utterance = turn.get("utterance", "")
 
         if speaker == "SYSTEM":
-            dialogue_history += f"\nSYSTEM: {utterance}\n"
+            dialogue_history.append(f"SYSTEM (context only, do not copy values): {utterance}")
             continue
         
         if turn.get("speaker") != "USER":
             continue
 
+        MAX_HISTORY_TURNS = 4
+        recent_history = dialogue_history[-MAX_HISTORY_TURNS:]
+        dialogue_history_str = "\n".join(recent_history)
+
         gold_belief = extract_gold_belief_from_turn(turn)
         if gold_belief is None:
             skipped_no_state_turns += 1
-            dialogue_history += f"\nUSER: {utterance}\n"
+            dialogue_history.append(f"SYSTEM (context only, do not copy values): {utterance}")
             continue
 
         user_utterance = utterance
 
-        fixed_prefix, variable_suffix = build_prompt(dialogue_history, belief, user_utterance, USE_FEW_SHOT)
+        fixed_prefix, variable_suffix = build_prompt(dialogue_history_str, belief, user_utterance, USE_FEW_SHOT)
         prompt = build_safe_prompt(tokeniser, fixed_prefix, variable_suffix, max_length=2048)
         model_input = make_model_input(tokeniser, prompt)
         inputs = tokeniser(
@@ -322,7 +326,7 @@ for dialogue in subset:
             print("RAW THAT FAILED:")
             print(decoded)
             print("RAW OUTPUT LENGTH:", len(decoded))
-            dialogue_history += f"\nUSER: {user_utterance}\n"
+            dialogue_history.append(f"SYSTEM (context only, do not copy values): {utterance}")
             continue
 
         gold_belief = normalise_belief(gold_belief)
@@ -345,7 +349,7 @@ for dialogue in subset:
         else:
             raise ValueError(f"Invalid EVAL_MODE: {EVAL_MODE}. Must be 'oracle' or 'rollout'.")
 
-        dialogue_history += f"\nUSER: {user_utterance}\n"
+        dialogue_history.append(f"SYSTEM (context only, do not copy values): {utterance}")
 
 print("\nEvaluation Summary")
 print(f"Evaluated Turns: {evaluated_turns}")
