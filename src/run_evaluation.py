@@ -296,7 +296,7 @@ for dialogue in subset:
 
             outputs = model.generate(
                 **inputs,
-                max_new_tokens=129,
+                max_new_tokens=256,
                 do_sample=False,
                 temperature=0.0,
                 eos_token_id=tokeniser.eos_token_id,
@@ -321,6 +321,7 @@ for dialogue in subset:
             print("PARSE FAILED:", e)
             print("RAW THAT FAILED:")
             print(decoded)
+            print("RAW OUTPUT LENGTH:", len(decoded))
             dialogue_history += f"\nUSER: {user_utterance}\n"
             continue
 
