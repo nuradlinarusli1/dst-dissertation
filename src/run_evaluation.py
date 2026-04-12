@@ -341,10 +341,6 @@ for dialogue in subset:
 
         try:
             extracted_json = extract_json(decoded)
-            print("\n==============================")
-            print("EXTRACTED JSON:")
-            print(json.dumps(extracted_json, indent=2))
-
             predicted_belief = normalise_belief(extracted_json)
         except ValueError as e:
             parse_failures += 1
