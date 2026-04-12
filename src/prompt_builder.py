@@ -40,7 +40,7 @@ Updated belief state:
 You are a dialogue state tracker (DST) for the MultiWOZ 2.2 dataset.
 
 Task:
-Given the previous belief state, primarily the latest user utterance, and the dialogue state, update the belief state.
+Given the previous belief state, primarily the latest user utterance, and the dialogue history, update the belief state.
 
 STRICT OUTPUT RULES (VERY IMPORTANT):
 - Output ONLY valid JSON. NO extra text.
@@ -75,13 +75,11 @@ Now update the belief state for the following turn.
 Previous belief state:
 {json.dumps(prev_belief, indent=2)}
 
-Latest system utterance (for context only, do NOT update based on this):
-"{system_utterance}"
-
 Latest user utterance (ONLY update based on this):
 "{user_utterance}"
 
-Dialogue history:
+Reference only dialogue history:
+Use this for context but do NOT update the belief state based on SYSTEM utterances. ONLY update based on the latest USER utterance.
 {dialogue_history}
 
 Return ONLY the updated belief state JSON:
