@@ -291,12 +291,6 @@ for dialogue in subset:
         print("\n==============================")
         print(f"Dialogue History: {dialogue_history_str if dialogue_history_str else '[EMPTY]'}")
 
-        print("\nRAW REQUESTED SLOTS (per frame):")
-        for frame in turn.get("frames", []):
-            service = frame.get("service")
-            req = frame.get("state", {}).get("requested_slots", [])
-            print(f"{service}: {req}")
-
         gold_belief = extract_gold_belief_from_turn(turn)
 
         if gold_belief is not None:
@@ -367,10 +361,6 @@ for dialogue in subset:
             continue
 
         gold_belief = normalise_belief(gold_belief)
-
-        print("\nGOLD REQUEST AFTER NORMALISE:")
-        for domain in gold_belief:
-            print(f"{domain}: {gold_belief[domain]['request']}")
 
         print("\n==============================")
         print(f"NORMALISED PREDICTED:", predicted_belief)
