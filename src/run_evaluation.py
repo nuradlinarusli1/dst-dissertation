@@ -263,17 +263,18 @@ parse_failures = 0
 for dialogue in subset:
     belief = get_initial_belief_state()
     dialogue_history = []
-
+    system_utterance = ""
 
     for turn in dialogue["turns"]:
         speaker = turn.get("speaker")
         utterance = turn.get("utterance", "")
 
         if speaker == "SYSTEM":
+            system_utterance = utterance
             dialogue_history.append(f"SYSTEM: {utterance}")
             continue
         
-        if turn.get("speaker") != "USER":
+        if speaker != "USER":
             continue
 
         print("\n==============================")
@@ -293,19 +294,13 @@ for dialogue in subset:
 
         gold_belief = extract_gold_belief_from_turn(turn)
 
-        if gold_belief is not None:
-            print("\nGOLD REQUEST BEFORE NORMALISE:")
-            for domain in gold_belief:
-                print(f"{domain}: {gold_belief[domain]['request']}")
-
         if gold_belief is None:
             skipped_no_state_turns += 1
             dialogue_history.append(f"USER: {utterance}")
             continue
 
         user_utterance = utterance
-
-        fixed_prefix, variable_suffix = build_prompt(dialogue_history_str, belief, user_utterance, USE_FEW_SHOT)
+        fixed_prefix, variable_suffix = build_prompt(dialogue_history_str, belief, user_utterance, system_utterance, USE_FEW_SHOT)
         prompt = build_safe_prompt(tokeniser, fixed_prefix, variable_suffix, max_length=2048)
 
         if PRINT_PROMPTS:
