@@ -78,8 +78,10 @@ Previous belief state:
 Latest user utterance (ONLY update based on this):
 "{user_utterance}"
 
-Reference only dialogue history:
-Use this for context but do NOT update the belief state based on SYSTEM utterances. ONLY update based on the latest USER utterance.
+Latest system utterance (context only, do NOT update based on this):
+"{system_utterance}"
+
+Dialogue history:
 {dialogue_history}
 
 Return ONLY the updated belief state JSON:
