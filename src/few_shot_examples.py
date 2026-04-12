@@ -7,7 +7,7 @@ FEW_SHOT_EXAMPLES = [
             "restaurant": {
                 "area": "none",
                 "pricerange": "none",
-                "food": "polynesian",
+                "food": "none",
                 "name": "none",
                 "bookday": "none",
                 "bookpeople": "none",
@@ -15,19 +15,21 @@ FEW_SHOT_EXAMPLES = [
                 "request": []
             }
         },
-        "user": "I dont mind any other type of food anymore",
+        
+        #Slot Filling (Extract Slot Values from a User Request)
+        "user": "I need a place to dine in the centre that is expensive.",
         "belief": {
             "restaurant": {
-                "area": "none",
-                "pricerange": "none",
-                "food": "dontcare",
+                "area": "centre",
+                "pricerange": "expensive",
+                "food": "none",
                 "name": "none",
                 "bookday": "none",
                 "bookpeople": "none",
                 "booktime": "none",
                 "request": []
             }
-        },
+        }
     },
     {
         "dialogue_history": "",
