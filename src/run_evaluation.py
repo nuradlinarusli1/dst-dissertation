@@ -10,7 +10,7 @@ from parser import extract_json
 
 #Toggles
 MODEL_ID = "Qwen/Qwen2.5-3B-Instruct" # "Qwen/Qwen2-7B-Instruct" or "Qwen/Qwen2.5-3B-Instruct"
-USE_FEW_SHOT = False # "True" or "False"
+USE_FEW_SHOT = True # "True" or "False"
 EVAL_MODE = "oracle" # "oracle" or "rollout"
 DEBUG = True # "True" or "False"
 PRINT_PROMPTS = True # "True" or "False"
@@ -219,7 +219,7 @@ def normalise_belief(belief: dict) -> dict:
 with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
-subset = [dialogues[0]]
+subset = [dialogues[2]]
 
 print("\n==============================")
 print(f"Total dialogues: {len(dialogues)}")
@@ -301,7 +301,7 @@ for dialogue in subset:
 
         user_utterance = utterance
         fixed_prefix, variable_suffix = build_prompt(dialogue_history_str, belief, user_utterance, system_utterance, USE_FEW_SHOT)
-        prompt = build_safe_prompt(tokeniser, fixed_prefix, variable_suffix, max_length=2048)
+        prompt = build_safe_prompt(tokeniser, fixed_prefix, variable_suffix, max_length=4096)
 
         if PRINT_PROMPTS:
             print("\n==============================")
