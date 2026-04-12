@@ -40,7 +40,7 @@ Updated belief state:
 You are a dialogue state tracker (DST) for the MultiWOZ 2.2 dataset.
 
 Task:
-Given the previous belief state, the latest system utterance for context, and the latest user utterance, update the belief state.
+Given the previous belief state, primarilythe latest user utterance, the dialogue state, and the system utterance, update the belief state.
 
 STRICT OUTPUT RULES (VERY IMPORTANT):
 - Output ONLY valid JSON. NO extra text.

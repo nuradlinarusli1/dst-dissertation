@@ -13,7 +13,7 @@ MODEL_ID = "Qwen/Qwen2.5-3B-Instruct" # "Qwen/Qwen2-7B-Instruct" or "Qwen/Qwen2.
 USE_FEW_SHOT = True # "True" or "False"
 EVAL_MODE = "oracle" # "oracle" or "rollout"
 DEBUG = True # "True" or "False"
-PRINT_PROMPTS = True # "True" or "False"
+PRINT_PROMPTS = False # "True" or "False"
 
 print("\n==============================")
 print(f"\nRunning mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}\n")
