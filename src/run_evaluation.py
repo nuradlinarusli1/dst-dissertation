@@ -219,7 +219,7 @@ def normalise_belief(belief: dict) -> dict:
 with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
-subset = [dialogues[:5]] 
+subset = [dialogues[0]]
 
 print("\n==============================")
 print(f"Total dialogues: {len(dialogues)}")
@@ -291,11 +291,19 @@ for dialogue in subset:
         print("\n==============================")
         print(f"Dialogue History: {dialogue_history_str if dialogue_history_str else '[EMPTY]'}")
 
-        print("\n==============================")
-        print("RAW FRAMES FROM DATASET:")
-        print(json.dumps(turn.get("frames", []), indent=2))
+        print("\nRAW REQUESTED SLOTS (per frame):")
+        for frame in turn.get("frames", []):
+            service = frame.get("service")
+            req = frame.get("state", {}).get("requested_slots", [])
+            print(f"{service}: {req}")
 
         gold_belief = extract_gold_belief_from_turn(turn)
+
+        if gold_belief is not None:
+            print("\nGOLD REQUEST BEFORE NORMALISE:")
+            for domain in gold_belief:
+                print(f"{domain}: {gold_belief[domain]['request']}")
+
         if gold_belief is None:
             skipped_no_state_turns += 1
             dialogue_history.append(f"USER: {utterance}")
@@ -359,6 +367,10 @@ for dialogue in subset:
             continue
 
         gold_belief = normalise_belief(gold_belief)
+
+        print("\nGOLD REQUEST AFTER NORMALISE:")
+        for domain in gold_belief:
+            print(f"{domain}: {gold_belief[domain]['request']}")
 
         print("\n==============================")
         print(f"NORMALISED PREDICTED:", predicted_belief)
