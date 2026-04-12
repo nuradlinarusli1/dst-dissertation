@@ -8,6 +8,9 @@ from schema import get_initial_belief_state, get_allowed_values
 from prompt_builder import build_prompt
 from parser import extract_json
 from api_helper import call_model_api
+from dotenv import load_dotenv
+
+load_dotenv()
 
 #Toggles
 MODEL_ID = "qwen/qwen2-7b-instruct" # Change models
