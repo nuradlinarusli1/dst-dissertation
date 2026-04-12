@@ -8,13 +8,14 @@ from schema import get_initial_belief_state, get_allowed_values
 from prompt_builder import build_prompt, build_safe_prompt
 from parser import extract_json
 
-MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
-USE_FEW_SHOT = False
+#Toggles
+MODEL_ID = "Qwen/Qwen2.5-3B-Instruct" # "Qwen/Qwen2-7B-Instruct" or "Qwen/Qwen2.5-3B-Instruct"
+USE_FEW_SHOT = False # "True" or "False"
+EVAL_MODE = "oracle" # "oracle" or "rollout"
+DEBUG = True # "True" or "False"
+PRINT_PROMPTS = True # "True" or "False"
 
-# "oracle" evaluation mode: Use the gold belief state for the next turn
-# "rollout" evaluation mode: Use the predicted belief state for the next turn
-EVAL_MODE = "oracle"
-
+print("\n==============================")
 print(f"\nRunning mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}\n")
 print(f"\nEvaluation mode: {EVAL_MODE}\n")
 
@@ -218,9 +219,9 @@ def normalise_belief(belief: dict) -> dict:
 with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
-#restaurant_dialogues = [d for d in dialogues if has_restaurant_turn(d)]
 subset = [dialogues[2]]
 
+print("\n==============================")
 print(f"Total dialogues: {len(dialogues)}")
 print(f"Subset size: {len(subset)}")
 
@@ -263,20 +264,32 @@ for dialogue in subset:
     belief = get_initial_belief_state()
     dialogue_history = []
 
+
     for turn in dialogue["turns"]:
         speaker = turn.get("speaker")
         utterance = turn.get("utterance", "")
 
         if speaker == "SYSTEM":
-            dialogue_history.append(f"SYSTEM (context only, do not copy values): {utterance}")
+            dialogue_history.append(f"SYSTEM: {utterance}")
             continue
         
         if turn.get("speaker") != "USER":
             continue
 
+        print("\n==============================")
+        print(f"Dialogue ID: {dialogue.get('dialogue_id', 'N/A')}")
+        print(f"Turn Index: {turn.get('turn_index', 'N/A')}")
+
         MAX_HISTORY_TURNS = 4
         recent_history = dialogue_history[-MAX_HISTORY_TURNS:]
         dialogue_history_str = "\n".join(recent_history)
+
+        print("\n==============================")
+        print("USER UTTERANCE:")
+        print(utterance)
+
+        print("\n==============================")
+        print(f"Dialogue History: {dialogue_history_str if dialogue_history_str else '[EMPTY]'}")
 
         print("\n==============================")
         print("RAW FRAMES FROM DATASET:")
@@ -292,6 +305,12 @@ for dialogue in subset:
 
         fixed_prefix, variable_suffix = build_prompt(dialogue_history_str, belief, user_utterance, USE_FEW_SHOT)
         prompt = build_safe_prompt(tokeniser, fixed_prefix, variable_suffix, max_length=2048)
+
+        if PRINT_PROMPTS:
+            print("\n==============================")
+            print("PROMPT SENT TO MODEL:")
+            print(prompt)
+
         model_input = make_model_input(tokeniser, prompt)
         inputs = tokeniser(
             model_input, 
@@ -318,9 +337,18 @@ for dialogue in subset:
         generated_only = outputs[0][prompt_len:]
         decoded = tokeniser.decode(generated_only, skip_special_tokens=True)
 
+        print("\n==============================")
+        print("RAW MODEL OUTPUT:")
+        print(decoded)
+        print("RAW OUTPUT LENGTH:", len(decoded))
+
         try:
-            predicted_belief = extract_json(decoded)
-            predicted_belief = normalise_belief(predicted_belief)
+            extracted_json = extract_json(decoded)
+            print("\n==============================")
+            print("EXTRACTED JSON:")
+            print(json.dumps(extracted_json, indent=2))
+
+            predicted_belief = normalise_belief(extracted_json)
         except ValueError as e:
             parse_failures += 1
             print("PARSE FAILED:", e)
@@ -332,8 +360,14 @@ for dialogue in subset:
 
         gold_belief = normalise_belief(gold_belief)
 
-        print(f"PREDICTED:", predicted_belief)
-        print(f"GOLD:", gold_belief)
+        print("\n==============================")
+        print(f"NORMALISED PREDICTED:", predicted_belief)
+        print(f"\nNORMALISED GOLD:", gold_belief)
+
+        if predicted_belief == gold_belief:
+            print("\nPREDICTION MATCHES GOLD")
+        else:
+            print("\nPREDICTION DOES NOT MATCH GOLD")
 
         update_slot_metrics(predicted_belief, gold_belief, metrics)
 
@@ -350,9 +384,16 @@ for dialogue in subset:
         else:
             raise ValueError(f"Invalid EVAL_MODE: {EVAL_MODE}. Must be 'oracle' or 'rollout'.")
 
+        print("\n==============================")
+        print("UPDATED BELIEF STATE FOR NEXT TURN:")
+        print(json.dumps(belief, indent=2))
+
         dialogue_history.append(f"USER: {utterance}")
 
+print("\n==============================")
 print("\nEvaluation Summary")
+print("==============================")
+
 print(f"Evaluated Turns: {evaluated_turns}")
 print(f"Skipped Turns (No State): {skipped_no_state_turns}")
 print(f"Parse Failures: {parse_failures}")

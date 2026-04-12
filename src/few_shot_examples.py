@@ -88,7 +88,7 @@ FEW_SHOT_EXAMPLES = [
         }
     },
     {
-        "dialogue_history": "",
+        "dialogue_history": "SYSTEM: Frankie and Bennys is an expensive Italian eatery in the south part of town. Would you like any additional information about this restaurant?",
         "prev_belief":{
             "restaurant": {
                 "area": "south",
@@ -101,7 +101,6 @@ FEW_SHOT_EXAMPLES = [
                 "request": []
             }
         },
-        "system": "Frankie and Bennys is an expensive Italian eatery in the south part of town. Would you like any additional information about this restaurant?",
         "user": "address and phone number",
         "belief": {
             "restaurant": {
@@ -117,7 +116,7 @@ FEW_SHOT_EXAMPLES = [
         }
     },
     {
-        "dialogue_history": "",
+        "dialogue_history": "SYSTEM: The address is Cambridge Leisure Park Clifton Way Cherry Hinton. The phone number is 01223 412430.",
         "prev_belief":{
             "restaurant": {
                 "area": "south",
@@ -130,7 +129,6 @@ FEW_SHOT_EXAMPLES = [
                 "request": ["phone", "address"]
             }
         },
-        "system": "The address is Cambridge Leisure Park Clifton Way Cherry Hinton. The phone number is 01223 412430.",
         "user": "Thank you, goodbye.",
         "belief": {
             "restaurant": {
