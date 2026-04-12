@@ -1,36 +1,30 @@
 import time
-import torch
+#import torch
 import json
 import re
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+#from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
 from schema import get_initial_belief_state, get_allowed_values
-from prompt_builder import build_prompt, build_safe_prompt
+from prompt_builder import build_prompt
 from parser import extract_json
+from api_helper import call_model_api
 
 #Toggles
-MODEL_ID = "Qwen/Qwen2.5-3B-Instruct" # "Qwen/Qwen2-7B-Instruct" or "Qwen/Qwen2.5-3B-Instruct"
+MODEL_ID = "qwen/qwen2-7b-instruct" # Change models
 USE_FEW_SHOT = True # "True" or "False"
 EVAL_MODE = "oracle" # "oracle" or "rollout"
 DEBUG = True # "True" or "False"
 PRINT_PROMPTS = False # "True" or "False"
 
+
+
 print("\n==============================")
-print(f"Running mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}\n")
-print(f"Evaluation mode: {EVAL_MODE}\n")
+print(f"Running mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}")
+print(f"Evaluation mode: {EVAL_MODE}")
 
 ALLOWED_VALUES = get_allowed_values()
 INITIAL_BELIEF = get_initial_belief_state()
 ALLOWED_DOMAINS = set(ALLOWED_VALUES.keys())
-
-def make_model_input(tokeniser, prompt: str) -> str:
-    if hasattr(tokeniser, "apply_chat_template") and getattr(tokeniser, "chat_template", None):
-        messages = [
-            {"role": "system", "content": "You are a dialogue state tracker (DST) for MultiWOZ 2.2. Output ONLY valid JSON. No extra text."},
-            {"role": "user", "content": prompt},
-        ]
-        return tokeniser.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    return prompt
 
 def extract_gold_belief_from_turn(turn: dict) -> dict | None:
     if turn.get("speaker") != "USER":
@@ -224,24 +218,7 @@ subset = [dialogues[2]]
 print("\n==============================")
 print(f"Total dialogues: {len(dialogues)}")
 print(f"Subset size: {len(subset)}")
-
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_compute_dtype=torch.float16
-)
-
-print("Loading model...")
-tokeniser = AutoTokenizer.from_pretrained(MODEL_ID)
-if tokeniser.pad_token is None:
-    tokeniser.pad_token = tokeniser.eos_token
-
-model = AutoModelForCausalLM.from_pretrained(
-    MODEL_ID,
-    device_map="auto",
-    quantization_config=bnb_config
-)
+print("API Loading...")
 
 metrics = {
     "correct": {
@@ -259,6 +236,7 @@ metrics = {
 evaluated_turns = 0
 skipped_no_state_turns = 0
 parse_failures = 0
+api_failures = 0
 
 for dialogue in subset:
     belief = get_initial_belief_state()
@@ -301,38 +279,22 @@ for dialogue in subset:
 
         user_utterance = utterance
         fixed_prefix, variable_suffix = build_prompt(dialogue_history_str, belief, user_utterance, system_utterance, USE_FEW_SHOT)
-        prompt = build_safe_prompt(tokeniser, fixed_prefix, variable_suffix, max_length=4096)
+        prompt = fixed_prefix + "\n\n" + variable_suffix
 
         if PRINT_PROMPTS:
             print("\n==============================")
             print("PROMPT SENT TO MODEL:")
             print(prompt)
 
-        model_input = make_model_input(tokeniser, prompt)
-        inputs = tokeniser(
-            model_input, 
-            return_tensors="pt",
-            truncation=False
-            ).to(model.device)
-        
-        with torch.no_grad():
+        try:
             t0 = time.time()
-
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=256,
-                do_sample=False,
-                temperature=0.0,
-                eos_token_id=tokeniser.eos_token_id,
-                pad_token_id=tokeniser.eos_token_id,
-                use_cache=True
-            )
-
+            decoded = call_model_api(prompt, MODEL_ID)
             print("Turn seconds:", round(time.time() - t0, 2))
-
-        prompt_len = inputs["input_ids"].shape[1]
-        generated_only = outputs[0][prompt_len:]
-        decoded = tokeniser.decode(generated_only, skip_special_tokens=True)
+        except Exception as e:
+            api_failures += 1
+            print("API CALL FAILED:", e)
+            dialogue_history.append(f"USER: {utterance}")
+            continue
 
         print("\n==============================")
         print("RAW MODEL OUTPUT:")
@@ -390,6 +352,7 @@ print("==============================")
 print(f"Evaluated Turns: {evaluated_turns}")
 print(f"Skipped Turns (No State): {skipped_no_state_turns}")
 print(f"Parse Failures: {parse_failures}")
+print(f"API Failures: {api_failures}")
 
 print("\nSlot Accuracy")
 for domain in metrics["correct"]:

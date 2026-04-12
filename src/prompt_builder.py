@@ -19,7 +19,7 @@ def build_prompt(dialogue_history: str, prev_belief: dict, user_utterance: str, 
 
             example_text.append(f"""
 -------------
-Examples to reference for reasoning::
+Examples to reference for reasoning:
 -------------
 Dialogue history:
 {history}
@@ -89,17 +89,3 @@ Return ONLY the updated belief state JSON:
 
     return fixed_prefix, variable_suffix
 
-def build_safe_prompt(tokeniser, fixed_prefix: str, variable_suffix: str, max_length: int = 4096) -> str:
-    fixed_ids = tokeniser(fixed_prefix, add_special_tokens=False)["input_ids"]
-    suffix_ids = tokeniser(variable_suffix, add_special_tokens=False)["input_ids"]
-
-    allowed_suffix_len = max_length - len(fixed_ids) - 50
-
-    if allowed_suffix_len <= 0:
-        raise ValueError("Fixed prefix is too long. Shorten instructions or few-shot examples")
-    
-    if len(suffix_ids) > allowed_suffix_len:
-        suffix_ids = suffix_ids[-allowed_suffix_len:]
-
-    trimmed_suffix = tokeniser.decode(suffix_ids, skip_special_tokens=True)
-    return fixed_prefix + "\n\n" + trimmed_suffix
