@@ -16,8 +16,8 @@ DEBUG = True # "True" or "False"
 PRINT_PROMPTS = False # "True" or "False"
 
 print("\n==============================")
-print(f"\nRunning mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}\n")
-print(f"\nEvaluation mode: {EVAL_MODE}\n")
+print(f"Running mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}\n")
+print(f"Evaluation mode: {EVAL_MODE}\n")
 
 ALLOWED_VALUES = get_allowed_values()
 INITIAL_BELIEF = get_initial_belief_state()
@@ -219,7 +219,7 @@ def normalise_belief(belief: dict) -> dict:
 with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
-subset = [dialogues[2]]
+subset = dialogues[:5]
 
 print("\n==============================")
 print(f"Total dialogues: {len(dialogues)}")
