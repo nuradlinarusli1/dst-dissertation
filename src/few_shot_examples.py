@@ -7,36 +7,6 @@ FEW_SHOT_EXAMPLES = [
             "restaurant": {
                 "area": "none",
                 "pricerange": "none",
-                "food": "none",
-                "name": "none",
-                "bookday": "none",
-                "bookpeople": "none",
-                "booktime": "none",
-                "request": []
-            }
-        },
-        
-        #Slot Filling (Extract Slot Values from a User Request)
-        "user": "I need a place to dine in the centre that is expensive.",
-        "belief": {
-            "restaurant": {
-                "area": "centre",
-                "pricerange": "expensive",
-                "food": "none",
-                "name": "none",
-                "bookday": "none",
-                "bookpeople": "none",
-                "booktime": "none",
-                "request": []
-            }
-        }
-    },
-    {
-        "dialogue_history": "",
-        "prev_belief":{
-            "restaurant": {
-                "area": "none",
-                "pricerange": "none",
                 "food": "polynesian",
                 "name": "none",
                 "bookday": "none",

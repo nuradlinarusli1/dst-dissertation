@@ -79,7 +79,7 @@ Return ONLY the updated belief state JSON:
 
     return fixed_prefix, variable_suffix
 
-def build_safe_prompt(tokeniser, fixed_prefix: str, variable_suffix: str, max_length: int = 2048) -> str:
+def build_safe_prompt(tokeniser, fixed_prefix: str, variable_suffix: str, max_length: int = 4096) -> str:
     fixed_ids = tokeniser(fixed_prefix, add_special_tokens=False)["input_ids"]
     suffix_ids = tokeniser(variable_suffix, add_special_tokens=False)["input_ids"]
 
