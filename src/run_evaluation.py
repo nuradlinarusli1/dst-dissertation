@@ -219,7 +219,7 @@ def normalise_belief(belief: dict) -> dict:
 with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
-subset = [dialogues[2]]
+subset = [dialogues[:5]] 
 
 print("\n==============================")
 print(f"Total dialogues: {len(dialogues)}")
