@@ -42,12 +42,15 @@ STRICT OUTPUT RULES (VERY IMPORTANT):
 - Output must match this exact JSON structure (same keys, same nesting):
 {json.dumps(required_structure, indent=2)}
 
-STATE UPDATE RULES:
+STATE UPDATE RULES (VERY IMPORTANT):
 - Start from the previous belief state
 - ONLY update based on the latest USER utterance
 - Keep all previous values unless the user explicitly changes them.
 - Do NOT add or change constraint slot values based on SYSTEM responses.
-- SYSTEM utterances are context only
+- SYSTEM utterances are context only.
+- A restaurant/hotel/train suggested by the SYSTEM does NOT mean the user has accepted it. Do NOT update the belief state based on system suggestions unless the USER explicitly accepts it.
+- The "request" list contains ONLY slots that the USER has explicitly requested information for.
+- Do not fill "request" slots with all possible slots from the schema if the user has not explicitly requested them.
 - If the system has provided the requested information for a slot, remove it from the request list in the belief state.
 - Track ONLY these domains: "restaurant", "hotel", "train". Do NOT include any other domains such as "attraction", "taxi", "museum" etc.
 - Use "none" ONLY for slots that are still unknown and have never been filled.
@@ -69,7 +72,7 @@ Dialogue history:
 Previous belief state:
 {json.dumps(prev_belief, indent=2)}
 
-Latest user utterance:
+Latest user utterance (ONLY update based on this):
 "{user_utterance}"
 
 Return ONLY the updated belief state JSON:
