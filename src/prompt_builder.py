@@ -13,69 +13,79 @@ def build_prompt(dialogue_history: str, prev_belief: dict, user_utterance: str, 
         example_text = []
 
         for example in FEW_SHOT_EXAMPLES:
+            history = example.get("dialogue_history", "").strip()
+            if not history:
+                history = "No dialogue history"
+
             example_text.append(f"""
-                                
-Previous belief state:
-{json.dumps(example["prev_belief"], indent=2)}
+                -------------
+                Examples to reference for reasoning::
+                -------------
+                Dialogue history:
+                {history}
 
-User utterance:
-"{example["user"]}"
+                Previous belief state:
+                {json.dumps(example["prev_belief"], indent=2)}
 
-Updated belief state:
-{json.dumps(example["belief"], indent=2)}
-""".strip())
+                User utterance:
+                "{example["user"]}"
+
+                Updated belief state:
+                {json.dumps(example["belief"], indent=2)}
+            """.strip())
 
         example_block = "\n".join(example_text)
 
     fixed_prefix = f"""
-You are a dialogue state tracker (DST) for the MultiWOZ 2.2 dataset.
+        You are a dialogue state tracker (DST) for the MultiWOZ 2.2 dataset.
 
-Task:
-Given the previous belief state, the latest system utterance for context, and the latest user utterance, update the belief state.
+        Task:
+        Given the previous belief state, the latest system utterance for context, and the latest user utterance, update the belief state.
 
-STRICT OUTPUT RULES (VERY IMPORTANT):
-- Output ONLY valid JSON. NO extra text.
-- Output must match this exact JSON structure (same keys, same nesting):
-{json.dumps(required_structure, indent=2)}
+        STRICT OUTPUT RULES (VERY IMPORTANT):
+        - Output ONLY valid JSON. NO extra text.
+        - Output must match this exact JSON structure (same keys, same nesting):
+        {json.dumps(required_structure, indent=2)}
 
-STATE UPDATE RULES (VERY IMPORTANT):
-- Start from the previous belief state
-- ONLY update based on the latest USER utterance.
-- Keep all previous values unless the user explicitly changes them.
-- Do NOT add or change constraint slot values based on SYSTEM responses.
-- SYSTEM utterances are context only.
-- A restaurant/hotel/train suggested by the SYSTEM does NOT mean the user has accepted it. Do NOT update the belief state based on system suggestions unless the USER explicitly accepts it.
-- The "request" list contains ONLY slots that the USER has explicitly requested information for.
-- Do not fill "request" slots with all possible slots from the schema if the user has not explicitly requested them.
-- If the system has provided the requested information for a slot, remove it from the request list in the belief state.
-- Track ONLY these domains: "restaurant", "hotel", "train". Do NOT include any other domains such as "attraction", "taxi", "museum" etc.
-- Use "none" ONLY for slots that are still unknown and have never been filled.
-- Use "dontcare" if the user has explicitly indicated no preference for a slot, for example "any", "no preference" or similar.
+        STATE UPDATE RULES (VERY IMPORTANT):
+        - Start from the previous belief state
+        - ONLY update based on the latest USER utterance.
+        - Keep all previous values unless the user explicitly changes them.
+        - Do NOT add or change constraint slot values based on SYSTEM responses.
+        - SYSTEM utterances are context only.
+        - A restaurant/hotel/train suggested by the SYSTEM does NOT mean the user has accepted it. Do NOT update the belief state based on system suggestions unless the USER explicitly accepts it.
+        - The "request" list contains ONLY slots that the USER has explicitly requested information for.
+        - Do not fill "request" slots with all possible slots from the schema if the user has not explicitly requested them.
+        - If the system has provided the requested information for a slot, remove it from the request list in the belief state.
+        - Track ONLY these domains: "restaurant", "hotel", "train". Do NOT include any other domains such as "attraction", "taxi", "museum" etc.
+        - Use "none" ONLY for slots that are still unknown and have never been filled.
+        - Use "dontcare" if the user has explicitly indicated no preference for a slot, for example "any", "no preference" or similar.
 
-- Allowed values:
-{json.dumps(allowed, indent=2)}
-""".strip()
-    
+        - Allowed values:
+        {json.dumps(allowed, indent=2)}
+    """.strip()
+
     if example_block:
         fixed_prefix += f"\n\n{example_block}"
 
     variable_suffix = f"""
-Now update the belief state for the following turn.
+        ------------------------------
+        Now update the belief state for the following turn.
 
-Previous belief state:
-{json.dumps(prev_belief, indent=2)}
+        Previous belief state:
+        {json.dumps(prev_belief, indent=2)}
 
-Latest system utterance (for context only, do NOT update based on this):
-"{system_utterance}"
+        Latest system utterance (for context only, do NOT update based on this):
+        "{system_utterance}"
 
-Latest user utterance (ONLY update based on this):
-"{user_utterance}"
+        Latest user utterance (ONLY update based on this):
+        "{user_utterance}"
 
-Dialogue history (Optional):
-{dialogue_history}
+        Dialogue history:
+        {dialogue_history}
 
-Return ONLY the updated belief state JSON:
-""".strip()
+        Return ONLY the updated belief state JSON:
+    """.strip()
 
     return fixed_prefix, variable_suffix
 
