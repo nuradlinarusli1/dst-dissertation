@@ -114,6 +114,79 @@ FEW_SHOT_EXAMPLES = [
                 "request": []
             }
         }
+    },
+    {
+        "dialogue_history": "USER: Sounds good, could I get that phone number? Also, could you recommend me an expensive hotel?\nSYSTEM: Bedouin's phone is 01223367660. As far as hotels go, I recommend the University Arms Hotel in the center of town.\nYes. Can you book it for me?\nSYSTEM: Sure, when would you like that reservation?",
+        "prev_belief": {
+            "restaurant": {
+                "area": "centre",
+                "pricerange": "expensive",
+                "food": "none",
+                "name": "bedouin",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
+                "request": []
+            },
+            "hotel": {
+                "pricerange": "expensive",
+                "type": "hotel",
+                "area": "none",
+                "name": "university arms hotel",
+                "bookday": "none",
+                "bookpeople": "none",
+                "bookstay": "none",
+                "internet": "none",
+                "parking": "none",
+                "stars": "none",
+                "request": []
+            },
+            "train": {
+                "departure": "none",
+                "destination": "none",
+                "day": "none",
+                "leaveat": "none",
+                "arriveby": "none",
+                "bookpeople": "none",
+                "request": []
+            }
+        },
+        "user": "i want to book it for 2 people and 2 nights starting from saturday.",
+        "belief": {
+            "restaurant": {
+                "area": "centre",
+                "pricerange": "expensive",
+                "food": "none",
+                "name": "bedouin",
+                "bookday": "none",
+                "bookpeople": "none",
+                "booktime": "none",
+                "request": []
+            },
+            "hotel": {
+                "pricerange": "expensive",
+                "type": "hotel",
+                "area": "none",
+                "name": "university arms hotel",
+                "bookday": "saturday",
+                "bookpeople": "2",
+                "bookstay": "2",
+                "internet": "none",
+                "parking": "none",
+                "stars": "none",
+                "request": []
+            },
+            "train": {
+                "departure": "none",
+                "destination": "none",
+                "day": "none",
+                "leaveat": "none",
+                "arriveby": "none",
+                "bookpeople": "none",
+                "request": []
+            }
+
+        }
     }
 
 ]

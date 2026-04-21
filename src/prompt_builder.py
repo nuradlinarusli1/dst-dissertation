@@ -12,14 +12,15 @@ def build_prompt(dialogue_history: str, prev_belief: dict, user_utterance: str, 
     if use_few_shot:
         example_text = []
 
-        for example in FEW_SHOT_EXAMPLES:
+        for i, example in enumerate(FEW_SHOT_EXAMPLES, start=1):
             history = example.get("dialogue_history", "").strip()
             if not history:
                 history = "No dialogue history"
 
             example_text.append(f"""
+                              
 -------------
-Examples to reference for reasoning:
+Example {i} to reference for how to update the belief state based on the user utterance:
 -------------
 Dialogue history:
 {history}
@@ -40,7 +41,7 @@ Updated belief state:
 You are a dialogue state tracker (DST) for the MultiWOZ 2.2 dataset.
 
 Task:
-Given the previous belief state, primarily the latest user utterance, and the dialogue history, update the belief state.
+Given the previous belief state and ONLY latest user utterance, update the belief state.
 
 STRICT OUTPUT RULES (VERY IMPORTANT):
 - Output ONLY valid JSON. NO extra text.
@@ -48,21 +49,29 @@ STRICT OUTPUT RULES (VERY IMPORTANT):
 {json.dumps(required_structure, indent=2)}
 
 STATE UPDATE RULES (VERY IMPORTANT):
-- Start from the previous belief state
-- ONLY update based on the latest USER utterance.
-- Keep all previous values unless the user explicitly changes them.
-- Do NOT add or change constraint slot values based on SYSTEM responses.
-- SYSTEM utterances are context only.
-- A restaurant/hotel/train suggested by the SYSTEM does NOT mean the user has accepted it. Do NOT update the belief state based on system suggestions unless the USER explicitly accepts it.
+- Start from the previous belief state.
+- Update the belief state using ONLY the latest USER utterance.
+- Use the dialogue history ONLY for reference resolution, such as understanding what "it", "that one", "there", or "the hotel" refers to in the latest user utterance.
+- Do NOT use the dialogue history to introduce new slot values unless the USER explicitly refers bacl to something earlier.
+- Do NOT add or change constraint slot values based only on SYSTEM suggestions, recommendations, or offered options.
+- Do NOT replace a USER's existing constraints with specific slot values mentioned by the SYSTEM unless the USER explicitly confirms, selects, or changes them.
+- A SYSTEM suggestion, recommendation, or offered option does NOT mean the USER has accepted all of its attributes.
+- If the USER refers back to an offered entity (for example "book it", "that one", or "yes"), use dialogue history to identify which entity/domain they are referring to, but do NOT add or change any slot values based on SYSTEM suggestions, recommendations, or offered options.
 - The "request" list contains ONLY slots that the USER has explicitly requested information for.
-- Do not fill "request" slots with all possible slots from the schema if the user has not explicitly requested them.
-- If the system has provided the requested information for a slot, remove it from the request list in the belief state.
-- Track ONLY these domains: "restaurant", "hotel", "train". Do NOT include any other domains such as "attraction", "taxi", "museum" etc.
+- Do not fill "request" slots with slots the USER did not explicitly ask for.
+- Track ONLY these domains: "restaurant", "hotel", and "train". Do NOT include any other domains such as "attraction", "taxi", or "museum".
 - Use "none" ONLY for slots that are still unknown and have never been filled.
-- Use "dontcare" if the user has explicitly indicated no preference for a slot, for example "any", "no preference" or similar.
+- Use "dontcare" if the USER has explicitly indicated no preference for a slot, for example "any" or "no preference".
+- If the latest USER utterance gives booking details using pronouns such as "book it", "book that", "try for 2 people", "starting Saturday", or "for 2 nights", apply those updates only to the single resolved active domain.
+- Slots with the same name across domains, such as area, bookday, or bookpeople, must not be updated in multiple domains.
+
+DO NOT:
+- Add any new values that are not in the allowed list for each slot.
+- Copy booking details into multiple domain just because slot names overlap. For example, if the USER says "book it for 2 people", only update the single resolved active domain with "bookpeople": "2" and do NOT copy "bookpeople": "2" into multiple domains just because they all have a "bookpeople" slot.
 
 - Allowed values:
 {json.dumps(allowed, indent=2)}
+- Slots are only updated based on the limited set of allowed values for each slot. Do NOT add any new values that are not in the allowed list for each slot.
     """.strip()
 
     if example_block:
@@ -72,17 +81,15 @@ STATE UPDATE RULES (VERY IMPORTANT):
 ------------------------------
 Now update the belief state for the following turn.
 
+Dialogue history:
+{dialogue_history}
+Use the dialogue history ONLY for reference resolution. Do NOT add or change slot values based only on SYSTEM suggestions, recommendations, or offered options.
+
 Previous belief state:
 {json.dumps(prev_belief, indent=2)}
 
 Latest user utterance (ONLY update based on this):
 "{user_utterance}"
-
-Latest system utterance (context only, do NOT update based on this):
-"{system_utterance}"
-
-Dialogue history:
-{dialogue_history}
 
 Return ONLY the updated belief state JSON:
     """.strip()

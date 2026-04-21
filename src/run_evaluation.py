@@ -8,18 +8,14 @@ from schema import get_initial_belief_state, get_allowed_values
 from prompt_builder import build_prompt
 from parser import extract_json
 from api_helper import call_model_api
-from dotenv import load_dotenv
-
-load_dotenv()
+#from run_whisper import transcribe
 
 #Toggles
-MODEL_ID = "qwen/qwen2-7b-instruct" # Change models
+MODEL_ID = "qwen/qwen-2.5-7b-instruct" # Change models
 USE_FEW_SHOT = True # "True" or "False"
 EVAL_MODE = "oracle" # "oracle" or "rollout"
 DEBUG = True # "True" or "False"
 PRINT_PROMPTS = False # "True" or "False"
-
-
 
 print("\n==============================")
 print(f"Running mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}")
@@ -163,11 +159,15 @@ def normalise_time_string(value: str) -> str:
     value = value.replace(".", ":")
     value = re.sub(r"\s*:\s*", ":", value)
 
-    if re.match(r"^\d{1,2}:\d{2}$", value):
-        hour, minute = value.split(":")
-        return f"{int(hour):02d}:{minute}"
+    value = re.sub(r"\b(after|before|around|at|about|by|from)\b", "", value).strip()
+
+    match = re.search(r"(\d{1,2}):(\d{2})", value)
+    if match:
+        hour = int(match.group(1))
+        minute = int(match.group(2))
+        return f"{hour:02d}:{minute}"
     
-    match = re.match(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", value)
+    match = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)", value)
     if match:
         hour = int(match.group(1))
         minute = int(match.group(2)) if match.group(2) else 0
@@ -213,10 +213,68 @@ def normalise_belief(belief: dict) -> dict:
 
     return normalised
 
-with open("../data/processed/train_restaurant.json", "r", encoding="utf-8") as f:
+def remove_fulfilled_requests(pred_belief: dict, system_utterance: str) -> dict:
+    system_lower = system_utterance.lower()
+
+    slot_markers = {
+        "phone": ["phone", "number", "phone number"],
+        "address": ["address", "location"],
+        "postcode": ["postcode", "postal code", "post code"],
+        "ref": ["reference", "ref", "booking reference"],
+        "id": ["id", "train id", "train number"],
+        "price": ["price", "cost"],
+        "leaveat": ["leave", "leave at", "departure time", "departure"],
+        "arriveby": ["arrive", "arrive by", "arrival time", "arrival"],
+        "bookday": ["book day", "booking day", "booked for", "booking date", "book day"],
+        "bookpeople": ["book people", "booking people", "booked for", "number of people", "book people"],
+        "bookstay": ["book stay", "booking stay", "booked for", "number of nights", "book stay"],
+        "stars": ["star", "stars", "rating"],
+        "internet": ["internet", "wifi", "wi-fi"],
+        "parking": ["parking"],
+        "area": ["area", "location"],
+        "pricerange": ["price range", "pricerange", "cost"],
+        "food": ["food", "cuisine"],
+        "type": ["type", "kind"],
+        "name": ["name"]
+    }
+
+    for domain, domain_state in pred_belief.items():
+        requests = domain_state.get("request", [])
+        if not isinstance(requests, list):
+            continue
+
+        remaining = []
+        for req in requests:
+            markers = slot_markers.get(req, [req])
+            fulfilled = any(marker in system_lower for marker in markers)
+            
+            if not fulfilled:
+                remaining.append(req)
+        pred_belief[domain]["request"] = remaining
+    return pred_belief
+
+
+def merge_beliefs(previous_belief: dict, turn_belief_update: dict) -> dict:
+    merged = json.loads(json.dumps(previous_belief))
+
+    for domain, slots in turn_belief_update.items():
+        if domain not in merged:
+            continue
+
+        for slot, value in slots.items():
+            if slot == "request":
+                prev_requests = merged[domain].get("request", [])
+                new_requests = value if isinstance(value, list) else []
+                merged[domain]["request"] = sorted(set(prev_requests + new_requests))
+            else:
+                if value != "none":
+                    merged[domain][slot] = value
+    return merged
+
+with open("../data/processed/filtered/train_multi-domain.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
-subset = [dialogues[2]]
+subset = dialogues[:50]
 
 print("\n==============================")
 print(f"Total dialogues: {len(dialogues)}")
@@ -241,6 +299,28 @@ skipped_no_state_turns = 0
 parse_failures = 0
 api_failures = 0
 
+def print_slot_differences(predicted: dict, gold: dict):
+    print("\nMISMATCHED SLOTS:")
+
+    for domain in gold:
+        if domain not in predicted:
+            print(f"{domain}: missing in prediction")
+            continue
+
+        for slot in gold[domain]:
+            pred_val = predicted[domain].get(slot)
+            gold_val = gold[domain].get(slot)
+
+            # Handle request list sorting
+            if slot == "request":
+                pred_val = sorted(pred_val) if isinstance(pred_val, list) else []
+                gold_val = sorted(gold_val) if isinstance(gold_val, list) else []
+
+            if pred_val != gold_val:
+                print(f"  [{domain}] {slot}:")
+                print(f"    predicted = {pred_val}")
+                print(f"    gold      = {gold_val}")
+
 for dialogue in subset:
     belief = get_initial_belief_state()
     dialogue_history = []
@@ -260,18 +340,19 @@ for dialogue in subset:
 
         print("\n==============================")
         print(f"Dialogue ID: {dialogue.get('dialogue_id', 'N/A')}")
-        print(f"Turn Index: {turn.get('turn_index', 'N/A')}")
 
-        MAX_HISTORY_TURNS = 4
+        MAX_HISTORY_TURNS = 2
         recent_history = dialogue_history[-MAX_HISTORY_TURNS:]
         dialogue_history_str = "\n".join(recent_history)
 
         print("\n==============================")
-        print("USER UTTERANCE:")
-        print(utterance)
+        print(f"Dialogue History: ")
+        print(f"{dialogue_history_str if dialogue_history_str else '[EMPTY]'}")
+        
 
         print("\n==============================")
-        print(f"Dialogue History: {dialogue_history_str if dialogue_history_str else '[EMPTY]'}")
+        print("USER UTTERANCE:")
+        print(utterance)
 
         gold_belief = extract_gold_belief_from_turn(turn)
 
@@ -299,14 +380,10 @@ for dialogue in subset:
             dialogue_history.append(f"USER: {utterance}")
             continue
 
-        print("\n==============================")
-        print("RAW MODEL OUTPUT:")
-        print(decoded)
-        print("RAW OUTPUT LENGTH:", len(decoded))
-
         try:
             extracted_json = extract_json(decoded)
             predicted_belief = normalise_belief(extracted_json)
+            predicted_belief = remove_fulfilled_requests(predicted_belief, system_utterance)
         except ValueError as e:
             parse_failures += 1
             print("PARSE FAILED:", e)
@@ -326,6 +403,7 @@ for dialogue in subset:
             print("\nPREDICTION MATCHES GOLD")
         else:
             print("\nPREDICTION DOES NOT MATCH GOLD")
+            print_slot_differences(predicted_belief, gold_belief)
 
         update_slot_metrics(predicted_belief, gold_belief, metrics)
 
