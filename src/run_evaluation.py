@@ -2,20 +2,24 @@ import time
 #import torch
 import json
 import re
+import numpy as np
 #from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
 from schema import get_initial_belief_state, get_allowed_values
-from prompt_builder import build_prompt
+from prompting.prompt_builder import build_prompt
 from parser import extract_json
-from api_helper import call_model_api
-#from run_whisper import transcribe
+from helper.api_helper import call_model_api
+from models.rule_based import rule_based_predict
+from models.run_whisper import transcribe, calculate_wer
 
 #Toggles
 MODEL_ID = "qwen/qwen-2.5-7b-instruct" # Change models
-USE_FEW_SHOT = True # "True" or "False"
+USE_FEW_SHOT = False # "True" or "False"
 EVAL_MODE = "oracle" # "oracle" or "rollout"
 DEBUG = True # "True" or "False"
 PRINT_PROMPTS = False # "True" or "False"
+USE_RULE_BASED = False
+USE_SPEECH = False
 
 print("\n==============================")
 print(f"Running mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}")
@@ -92,14 +96,20 @@ def update_slot_metrics(predicted: dict, gold: dict, metrics: dict):
             if slot not in predicted[domain]:
                 continue
 
-            metrics["total"][domain][slot] += 1
-
             predicted_value = predicted[domain][slot]
             gold_value = gold[domain][slot]
 
             if slot == "request":
                 predicted_value = sorted(predicted_value) if isinstance(predicted_value, list) else []
                 gold_value = sorted(gold_value) if isinstance(gold_value, list) else []
+
+                if not gold_value:
+                    continue
+            else:
+                if gold_value == "none":
+                    continue
+            
+            metrics["total"][domain][slot] += 1
 
             if predicted_value == gold_value:
                 metrics["correct"][domain][slot] += 1
@@ -254,27 +264,10 @@ def remove_fulfilled_requests(pred_belief: dict, system_utterance: str) -> dict:
     return pred_belief
 
 
-def merge_beliefs(previous_belief: dict, turn_belief_update: dict) -> dict:
-    merged = json.loads(json.dumps(previous_belief))
-
-    for domain, slots in turn_belief_update.items():
-        if domain not in merged:
-            continue
-
-        for slot, value in slots.items():
-            if slot == "request":
-                prev_requests = merged[domain].get("request", [])
-                new_requests = value if isinstance(value, list) else []
-                merged[domain]["request"] = sorted(set(prev_requests + new_requests))
-            else:
-                if value != "none":
-                    merged[domain][slot] = value
-    return merged
-
-with open("../data/processed/filtered/train_multi-domain.json", "r", encoding="utf-8") as f:
+with open("../data/processed/filtered/test_filtered.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
-subset = dialogues[:50]
+subset = dialogues[:1]
 
 print("\n==============================")
 print(f"Total dialogues: {len(dialogues)}")
@@ -321,10 +314,15 @@ def print_slot_differences(predicted: dict, gold: dict):
                 print(f"    predicted = {pred_val}")
                 print(f"    gold      = {gold_val}")
 
-for dialogue in subset:
+dialogue_jga_scores = []
+
+for dialogue_idx, dialogue in enumerate(subset):
     belief = get_initial_belief_state()
     dialogue_history = []
     system_utterance = ""
+    turn_idx = 0
+    dialogue_joint_correct = 0
+    dialogue_joint_total =  0
 
     for turn in dialogue["turns"]:
         speaker = turn.get("speaker")
@@ -348,50 +346,65 @@ for dialogue in subset:
         print("\n==============================")
         print(f"Dialogue History: ")
         print(f"{dialogue_history_str if dialogue_history_str else '[EMPTY]'}")
-        
-
-        print("\n==============================")
-        print("USER UTTERANCE:")
-        print(utterance)
+    
 
         gold_belief = extract_gold_belief_from_turn(turn)
 
         if gold_belief is None:
             skipped_no_state_turns += 1
             dialogue_history.append(f"USER: {utterance}")
+            turn_idx += 1
             continue
-
-        user_utterance = utterance
-        fixed_prefix, variable_suffix = build_prompt(dialogue_history_str, belief, user_utterance, system_utterance, USE_FEW_SHOT)
-        prompt = fixed_prefix + "\n\n" + variable_suffix
-
-        if PRINT_PROMPTS:
+        
+        if USE_SPEECH:
+            audio_path = f"../data/audio/sample.wav"
+            #audio_path = f"../data/audio/dialogue_{dialogue_idx+1:02d}_turn_{turn_idx+1:02d}.wav"
+            print(f"AUDIO PATH: {audio_path}")
+            user_utterance = transcribe(audio_path)
+            print(f"TRANSCRIBED UTTERANCE:")
+            print(user_utterance)
+        else:
+            user_utterance = utterance
             print("\n==============================")
-            print("PROMPT SENT TO MODEL:")
-            print(prompt)
+            print("USER UTTERANCE:")
+            print(utterance)
 
-        try:
-            t0 = time.time()
-            decoded = call_model_api(prompt, MODEL_ID)
-            print("Turn seconds:", round(time.time() - t0, 2))
-        except Exception as e:
-            api_failures += 1
-            print("API CALL FAILED:", e)
-            dialogue_history.append(f"USER: {utterance}")
-            continue
+        turn_idx += 1
 
-        try:
-            extracted_json = extract_json(decoded)
-            predicted_belief = normalise_belief(extracted_json)
-            predicted_belief = remove_fulfilled_requests(predicted_belief, system_utterance)
-        except ValueError as e:
-            parse_failures += 1
-            print("PARSE FAILED:", e)
-            print("RAW THAT FAILED:")
-            print(decoded)
-            print("RAW OUTPUT LENGTH:", len(decoded))
-            dialogue_history.append(f"USER: {utterance}")
-            continue
+        if USE_RULE_BASED:
+            predicted_belief = rule_based_predict(user_utterance, belief)
+            predicted_belief = normalise_belief(predicted_belief)
+        else:
+            fixed_prefix, variable_suffix = build_prompt(dialogue_history_str, belief, user_utterance, system_utterance, USE_FEW_SHOT)
+            prompt = fixed_prefix + "\n\n" + variable_suffix
+
+            if PRINT_PROMPTS:
+                print("\n==============================")
+                print("PROMPT SENT TO MODEL:")
+                print(prompt)
+
+            try:
+                t0 = time.time()
+                decoded = call_model_api(prompt, MODEL_ID)
+                print("Turn seconds:", round(time.time() - t0, 2))
+            except Exception as e:
+                api_failures += 1
+                print("API CALL FAILED:", e)
+                dialogue_history.append(f"USER: {utterance}")
+                continue
+
+            try:
+                extracted_json = extract_json(decoded)
+                predicted_belief = normalise_belief(extracted_json)
+                predicted_belief = remove_fulfilled_requests(predicted_belief, system_utterance)
+            except ValueError as e:
+                parse_failures += 1
+                print("PARSE FAILED:", e)
+                print("RAW THAT FAILED:")
+                print(decoded)
+                print("RAW OUTPUT LENGTH:", len(decoded))
+                dialogue_history.append(f"USER: {utterance}")
+                continue
 
         gold_belief = normalise_belief(gold_belief)
 
@@ -408,8 +421,10 @@ for dialogue in subset:
         update_slot_metrics(predicted_belief, gold_belief, metrics)
 
         metrics["joint_total"] += 1
+        dialogue_joint_total += 1
         if predicted_belief == gold_belief:
             metrics["joint_correct"] += 1
+            dialogue_joint_correct += 1
 
         evaluated_turns += 1
 
@@ -425,6 +440,10 @@ for dialogue in subset:
         print(json.dumps(belief, indent=2))
 
         dialogue_history.append(f"USER: {utterance}")
+    
+    if dialogue_joint_total >0:
+            dialogue_jga = dialogue_joint_correct / dialogue_joint_total
+            dialogue_jga_scores.append(dialogue_jga)
 
 print("\n==============================")
 print("\nEvaluation Summary")
@@ -446,3 +465,16 @@ for domain in metrics["correct"]:
 
 joint_acc = metrics["joint_correct"] / metrics["joint_total"] if metrics["joint_total"] else 0.0
 print(f"\nJoint Goal Accuracy: {joint_acc:.3f} ({metrics['joint_correct']}/{metrics['joint_total']})")
+if dialogue_jga_scores:
+    mean_jga = np.mean(dialogue_jga_scores)
+    std_jga = np.std(dialogue_jga_scores)
+    max_jga = np.max(dialogue_jga_scores)
+    min_jga = np.min(dialogue_jga_scores)
+
+    print("\nDialogue-level JGA Statistics:")
+    print(f"Mean JGA: {mean_jga:.3f}")
+    print(f"Std Dev: {std_jga:.3f}")
+    print(f"Max JGA: {max_jga:.3f}")
+    print(f"Min JGA: {min_jga:.3f}")
+
+calculate_wer(dialogues, len(subset), "../data/audio")

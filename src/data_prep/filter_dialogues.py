@@ -1,11 +1,14 @@
+# src/data_prep/filter_dialogues.py
+
 import json
 from pathlib import Path
 from typing import Any
 
+# Filters dialogue to include only certain domains, can be modified to include other domains.
 ALLOWED_DOMAINS = {"restaurant", "hotel", "train"}
 
-INPUT_PATH = Path("data/processed/dev.json")
-OUTPUT_PATH = Path("data/processed/dev_multi-domain.json")
+INPUT_PATH = Path("data/processed/...")
+OUTPUT_PATH = Path("data/processed/...")
 # IDS_OUTPUT_PATH = Path("data/processed/test_filtered_ids.txt")
 
 def extract_domains_from_turn(turn: dict[str, Any]) -> set[str]:

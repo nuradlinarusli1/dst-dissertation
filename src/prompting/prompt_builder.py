@@ -1,6 +1,6 @@
 import json
 from schema import get_allowed_values, get_initial_belief_state
-from few_shot_examples import FEW_SHOT_EXAMPLES
+from prompting.few_shot_examples import FEW_SHOT_EXAMPLES
 
 
 def build_prompt(dialogue_history: str, prev_belief: dict, user_utterance: str, system_utterance: str, use_few_shot: bool = False) -> tuple[str, str]  :
