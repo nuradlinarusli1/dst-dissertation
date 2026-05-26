@@ -85,16 +85,6 @@ Install all required packages using:
 ```bash
 pip install -r requirements.txt
 ```
-or alternatively
-
-```bash
-pip install openai-whisper
-pip install faster-whisper
-pip install jiwer
-pip install python-dotenv
-pip install requests
-pip install numpy
-```
 
 ### Configure API key
 
@@ -117,7 +107,7 @@ Download it from: https://github.com/budzianowski/multiwoz/tree/master/data/Mult
 Place the downloaded folder at:
 data/MultiWOZ_2.2/
 
-The preprocessed `test_filtered.json` file is included in `data/processed/filtered/` and is what the evaluation scripts use directly.
+The preprocessed `test_filtered.json` file is included in `data/filtered/` and is what the evaluation scripts use directly.
 
 ### Audio Files
 
