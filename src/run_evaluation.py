@@ -15,7 +15,7 @@ from prompting.prompt_builder import build_prompt
 from parser import extract_json
 from helper.api_helper import call_model_api
 from models.rule_based import rule_based_predict
-from models.run_whisper import transcribe, calculate_wer
+from models.run_whisper import transcribe
 
 # Evaluation configuration toggles
 MODEL_ID = "qwen/qwen-2.5-7b-instruct"
@@ -280,7 +280,7 @@ def remove_fulfilled_requests(pred_belief: dict, system_utterance: str) -> dict:
 
 
 # Load dataset
-with open("../data/processed/filtered/test_filtered.json", "r", encoding="utf-8") as f:
+with open("../data/filtered/test_filtered.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
 # If running text-based evaluation, run full filtered test dataset
@@ -373,7 +373,7 @@ for dialogue_idx, dialogue in enumerate(subset):
         print(f"{dialogue_history_str if dialogue_history_str else '[EMPTY]'}")
 
         if USE_SPEECH:
-            audio_path = f"../data/audio/converted_audio/dialogue_{dialogue_idx+1:02d}_turn_{turn_idx+1:02d}.wav"
+            audio_path = f"../data/audio/dialogue_{dialogue_idx+1:02d}_turn_{turn_idx+1:02d}.wav"
             print(f"AUDIO PATH: {audio_path}")
 
             try:
@@ -502,5 +502,3 @@ if dialogue_jga_scores:
     print(f"Std Dev: {std_jga:.3f}")
     print(f"Max JGA: {max_jga:.3f}")
     print(f"Min JGA: {min_jga:.3f}")
-
-calculate_wer(dialogues, len(subset), "../data/audio/converted_audio")
