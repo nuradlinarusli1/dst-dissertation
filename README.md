@@ -96,7 +96,17 @@ data/MultiWOZ_2.2/
 
 The preprocessed `test_filtered.json` file is included in `data/processed/filtered/` and is what the evaluation scripts use directly.
 
----
+### Audio Files
+
+The audio files used for speech-based evaluation are not included in this submission due to size.
+
+To reproduce the speech experiments, audio files should be named in the format:
+
+dialogue_XX_turn_YY.wav
+
+and placed at:
+
+data/audio/
 
 ### Running Evaluations
 
@@ -127,6 +137,7 @@ Configure:
 ```python
 USE_RULE_BASED = False
 USE_FEW_SHOT = False
+MODEL_ID = "qwen/qwen-2.5-7b-instruct"
 ```
 
 Run:
@@ -141,6 +152,8 @@ Configure:
 ```python
 USE_RULE_BASED = False
 USE_FEW_SHOT = True
+N_SHOTS = 5  # tested with 1, 3, and 5
+MODEL_ID = "qwen/qwen-2.5-7b-instruct"
 ```
 
 Run:
@@ -157,6 +170,10 @@ Enable speech mode:
 
 ```python
 USE_SPEECH = True
+USE_FEW_SHOT = True # True or False, depending if running on zero-shot or few-shot 
+N_SHOTS = 5  # Tested with 1, 3, and 5, if running in few-shot
+MODEL_ID = "qwen/qwen-2.5-7b-instruct"
+subset = dialogues[:50]
 ```
 
 The system will:
