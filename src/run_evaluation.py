@@ -1,9 +1,14 @@
+# src/run_evaluation.py
+# Main evaluation script for Dialogue State Tracking (DST) on the MultiWOZ 2.2 dataset.
+# Evaluates both LLM-based and rule-based DST approaches.
+# For LLM-based DST, constructs prompts with optional few-shot examples, calls the model API, and parses the output.
+# For rule-based DST, applies rules to update the belief state based on user utterances
+# Calculates slot accuracy and joint goal accuracy
+
 import time
-#import torch
 import json
 import re
 import numpy as np
-#from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
 from schema import get_initial_belief_state, get_allowed_values
 from prompting.prompt_builder import build_prompt
@@ -12,24 +17,25 @@ from helper.api_helper import call_model_api
 from models.rule_based import rule_based_predict
 from models.run_whisper import transcribe, calculate_wer
 
-#Toggles
-MODEL_ID = "qwen/qwen-2.5-7b-instruct" # Change models
-USE_FEW_SHOT = False # "True" or "False"
-EVAL_MODE = "oracle" # "oracle" or "rollout"
-DEBUG = True # "True" or "False"
+# Evaluation configuration toggles
+MODEL_ID = "qwen/qwen-2.5-7b-instruct"
+USE_FEW_SHOT =  True # "True" or "False"
 PRINT_PROMPTS = False # "True" or "False"
 USE_RULE_BASED = False
 USE_SPEECH = False
+N_SHOTS = 5 # 0, 1, 3 or 5
 
 print("\n==============================")
-print(f"Running mode: {'few-shot' if USE_FEW_SHOT else 'zero-shot'}")
-print(f"Evaluation mode: {EVAL_MODE}")
+print(f"Running mode: {N_SHOTS}-shot" if USE_FEW_SHOT else "zero-shot")
+print("\n==============================")
 
 ALLOWED_VALUES = get_allowed_values()
 INITIAL_BELIEF = get_initial_belief_state()
 ALLOWED_DOMAINS = set(ALLOWED_VALUES.keys())
 
 def extract_gold_belief_from_turn(turn: dict) -> dict | None:
+    # Extract the gold belief state from the turn's frames in the dialogue data.
+    # Returns None if the turn has no relevant state information
     if turn.get("speaker") != "USER":
         return None
     
@@ -88,6 +94,8 @@ def extract_gold_belief_from_turn(turn: dict) -> dict | None:
     return belief if found_relevant_info else None
 
 def update_slot_metrics(predicted: dict, gold: dict, metrics: dict):
+    # Compare predicted and gold belief states slot by slot and update metric counter
+    # Skips slots where the gold value is "none" (unfilled) or empty request lists
     for domain in gold:
         if domain not in predicted:
             continue
@@ -115,6 +123,7 @@ def update_slot_metrics(predicted: dict, gold: dict, metrics: dict):
                 metrics["correct"][domain][slot] += 1
 
 def normalise_text(value: str) -> str:
+    # Lowercase, strip and map common variants of words to slot values
     if not isinstance(value, str):
         return value
     
@@ -137,6 +146,7 @@ def normalise_text(value: str) -> str:
     return value_map.get(value, value)
 
 def normalise_number_string(value:str) -> str:
+    # Convert word numbers and digit strings to a consistent integer string format
     number_map = {
         "one": "1",
         "two": "2",
@@ -162,6 +172,7 @@ def normalise_number_string(value:str) -> str:
     return number_map.get(value, value)
 
 def normalise_time_string(value: str) -> str:
+    # Normalise time strings to HH:MM format, handling am/pm and common prefixes
     if not isinstance(value, str):
         return value
             
@@ -193,6 +204,8 @@ def normalise_time_string(value: str) -> str:
     return value
 
 def normalise_belief(belief: dict) -> dict:
+    # Apply all normalisation functions to every slot in the belief state
+    # Routes each slot to the appropriate normaliser based on slot type
     normalised = get_initial_belief_state()
 
     for domain, slots in normalised.items():
@@ -224,6 +237,8 @@ def normalise_belief(belief: dict) -> dict:
     return normalised
 
 def remove_fulfilled_requests(pred_belief: dict, system_utterance: str) -> dict:
+    # Remove request slots from the predicted belief that the system has already fulfilled
+    # Checks the system utterance for keywords associated with each request slot
     system_lower = system_utterance.lower()
 
     slot_markers = {
@@ -264,16 +279,22 @@ def remove_fulfilled_requests(pred_belief: dict, system_utterance: str) -> dict:
     return pred_belief
 
 
+# Load dataset
 with open("../data/processed/filtered/test_filtered.json", "r", encoding="utf-8") as f:
     dialogues = json.load(f)
 
-subset = dialogues[:1]
+# If running text-based evaluation, run full filtered test dataset
+subset = dialogues
+# If running speech-based evalution, run only the first 50 dialogues
+# subset = dialogues[:50] 
 
 print("\n==============================")
 print(f"Total dialogues: {len(dialogues)}")
 print(f"Subset size: {len(subset)}")
 print("API Loading...")
+print("\n==============================")
 
+# Initialise metrics and counters for evaluation
 metrics = {
     "correct": {
         domain: {slot: 0 for slot in slots}
@@ -287,12 +308,14 @@ metrics = {
     "joint_total": 0,
 }
 
+# Counters for evaluation summary
 evaluated_turns = 0
 skipped_no_state_turns = 0
 parse_failures = 0
 api_failures = 0
 
 def print_slot_differences(predicted: dict, gold: dict):
+    # Print comparison of mismatched slots between predicted and gold belief states for error analysis
     print("\nMISMATCHED SLOTS:")
 
     for domain in gold:
@@ -314,6 +337,7 @@ def print_slot_differences(predicted: dict, gold: dict):
                 print(f"    predicted = {pred_val}")
                 print(f"    gold      = {gold_val}")
 
+# Main evaluation loop
 dialogue_jga_scores = []
 
 for dialogue_idx, dialogue in enumerate(subset):
@@ -339,43 +363,50 @@ for dialogue_idx, dialogue in enumerate(subset):
         print("\n==============================")
         print(f"Dialogue ID: {dialogue.get('dialogue_id', 'N/A')}")
 
-        MAX_HISTORY_TURNS = 2
+        # Limit dialogue history to avoid exceeding model's context window
+        MAX_HISTORY_TURNS = 10
         recent_history = dialogue_history[-MAX_HISTORY_TURNS:]
         dialogue_history_str = "\n".join(recent_history)
 
         print("\n==============================")
         print(f"Dialogue History: ")
         print(f"{dialogue_history_str if dialogue_history_str else '[EMPTY]'}")
-    
 
-        gold_belief = extract_gold_belief_from_turn(turn)
-
-        if gold_belief is None:
-            skipped_no_state_turns += 1
-            dialogue_history.append(f"USER: {utterance}")
-            turn_idx += 1
-            continue
-        
         if USE_SPEECH:
-            audio_path = f"../data/audio/sample.wav"
-            #audio_path = f"../data/audio/dialogue_{dialogue_idx+1:02d}_turn_{turn_idx+1:02d}.wav"
+            audio_path = f"../data/audio/converted_audio/dialogue_{dialogue_idx+1:02d}_turn_{turn_idx+1:02d}.wav"
             print(f"AUDIO PATH: {audio_path}")
-            user_utterance = transcribe(audio_path)
+
+            try:
+                user_utterance = transcribe(audio_path)
+            except Exception as e:
+                api_failures += 1
+                print("TRANSCRIPTION FAILED:", e)
+                dialogue_history.append(f"USER: {utterance}")
+                turn_idx += 1
+                continue
+
             print(f"TRANSCRIBED UTTERANCE:")
             print(user_utterance)
         else:
             user_utterance = utterance
             print("\n==============================")
             print("USER UTTERANCE:")
-            print(utterance)
+            print(user_utterance)
 
         turn_idx += 1
+    
+        gold_belief = extract_gold_belief_from_turn(turn)
+
+        if gold_belief is None:
+            skipped_no_state_turns += 1
+            dialogue_history.append(f"USER: {user_utterance}")
+            continue
 
         if USE_RULE_BASED:
             predicted_belief = rule_based_predict(user_utterance, belief)
             predicted_belief = normalise_belief(predicted_belief)
         else:
-            fixed_prefix, variable_suffix = build_prompt(dialogue_history_str, belief, user_utterance, system_utterance, USE_FEW_SHOT)
+            fixed_prefix, variable_suffix = build_prompt(dialogue_history_str, belief, user_utterance, system_utterance, USE_FEW_SHOT, N_SHOTS)
             prompt = fixed_prefix + "\n\n" + variable_suffix
 
             if PRINT_PROMPTS:
@@ -390,7 +421,7 @@ for dialogue_idx, dialogue in enumerate(subset):
             except Exception as e:
                 api_failures += 1
                 print("API CALL FAILED:", e)
-                dialogue_history.append(f"USER: {utterance}")
+                dialogue_history.append(f"USER: {user_utterance}")
                 continue
 
             try:
@@ -403,7 +434,7 @@ for dialogue_idx, dialogue in enumerate(subset):
                 print("RAW THAT FAILED:")
                 print(decoded)
                 print("RAW OUTPUT LENGTH:", len(decoded))
-                dialogue_history.append(f"USER: {utterance}")
+                dialogue_history.append(f"USER: {user_utterance}")
                 continue
 
         gold_belief = normalise_belief(gold_belief)
@@ -427,24 +458,19 @@ for dialogue_idx, dialogue in enumerate(subset):
             dialogue_joint_correct += 1
 
         evaluated_turns += 1
-
-        if EVAL_MODE == "oracle":
-            belief = gold_belief
-        elif EVAL_MODE == "rollout":
-            belief = predicted_belief
-        else:
-            raise ValueError(f"Invalid EVAL_MODE: {EVAL_MODE}. Must be 'oracle' or 'rollout'.")
+        belief = predicted_belief
 
         print("\n==============================")
         print("UPDATED BELIEF STATE FOR NEXT TURN:")
         print(json.dumps(belief, indent=2))
 
-        dialogue_history.append(f"USER: {utterance}")
+        dialogue_history.append(f"USER: {user_utterance}")
     
     if dialogue_joint_total >0:
             dialogue_jga = dialogue_joint_correct / dialogue_joint_total
             dialogue_jga_scores.append(dialogue_jga)
 
+# Print evaluation summary
 print("\n==============================")
 print("\nEvaluation Summary")
 print("==============================")
@@ -477,4 +503,4 @@ if dialogue_jga_scores:
     print(f"Max JGA: {max_jga:.3f}")
     print(f"Min JGA: {min_jga:.3f}")
 
-calculate_wer(dialogues, len(subset), "../data/audio")
+calculate_wer(dialogues, len(subset), "../data/audio/converted_audio")

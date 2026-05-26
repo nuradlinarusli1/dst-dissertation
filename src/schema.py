@@ -1,6 +1,10 @@
-#src/schema.py
+# src/schema.py
+# Schema definition for the belief state used in DST.
+# Schema covers three domains from the MultiWOZ 2.2 Dataset: restaurant, hotel, and train.
 
 def get_initial_belief_state():
+
+    # Returns the initial (empty) belief state for each domain.
     return {
         "restaurant": {
             "area": "none",
@@ -37,6 +41,9 @@ def get_initial_belief_state():
     }
 
 def get_allowed_values():
+
+    # Returns allowed values for each slot and domain as defined in the MultiWOZ 2.2 dataset. 
+    # Slots with "free-text" can take any value, while others have a predefined set of possible values.
     return {
         "restaurant": {
             "area": ["centre", "north", "south", "east", "west", "none", "dontcare"],

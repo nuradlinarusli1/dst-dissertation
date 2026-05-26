@@ -1,11 +1,15 @@
+# src/models/run_whisper.py
+# Whisper-based audio transcription and WER evaluation
+# Transcribes audio files per user turn and compares against MultiWOZ 2.2 reference utterances.
+
 import os
 import whisper
 
-audio_path = os.path.abspath("../data/audio/sample.wav")
-
+# Load Whisper model
 model = whisper.load_model("medium")
 
 def transcribe(audio_path: str) -> str:
+    # Transcribe audio file using Whisper and return the transcribed text.
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
     
@@ -13,10 +17,12 @@ def transcribe(audio_path: str) -> str:
     return result["text"].strip()
 
 def calculate_wer(dialogues: list, subset_size: int, audio_dir: str) -> dict:
+    # Calculate WER for subset of dialogues
+    # Skips turns where audio file is missing and counts total turns evaluated.
     try:
-        from jiwer import wer, cer
+        from jiwer import wer
     except ImportError:
-        raise ImportError("Please install jiwer to calculate WER/CER: pip install jiwer")
+        raise ImportError("Please install jiwer to calculate WER: pip install jiwer")
     
     subset = dialogues[:subset_size]
     references = []
@@ -30,8 +36,7 @@ def calculate_wer(dialogues: list, subset_size: int, audio_dir: str) -> dict:
                 continue
             
             utterance = turn.get("utterance", "").strip().lower()
-            audio_path = os.path.join(audio_dir, "sample.wav")
-            #audio_path = os.path.join(audio_dir, f"dialogue_{dialogue_idx+1:02d}_turn_{turn_idx+1:02d}.wav")
+            audio_path = os.path.join(audio_dir, f"dialogue_{dialogue_idx+1:02d}_turn_{turn_idx+1:02d}.wav")
 
             if not os.path.exists(audio_path):
                 print(f"WARNING: Missing audio file {os.path.basename(audio_path)} — skipping")
@@ -39,6 +44,7 @@ def calculate_wer(dialogues: list, subset_size: int, audio_dir: str) -> dict:
                 turn_idx += 1
                 continue
 
+            # Transcribe and normalise to lowercase to match reference utterances.
             transcription = transcribe(audio_path).lower()
 
             references.append(utterance)
@@ -56,13 +62,11 @@ def calculate_wer(dialogues: list, subset_size: int, audio_dir: str) -> dict:
 
     if references:
         results["wer"] = wer(references, hypotheses)
-        results["cer"] = cer(references, hypotheses)
         print("\n================")
         print("WER Results:")
         print(f"\nTotal Turns Evaluated: {results['total_turns']}")
         print(f"Missing Audio Files: {results['missing_files']}")
         print(f"Word Error Rate (WER): {results['wer']:.3f} ({results['wer']*100:.1f}%)")
-        print(f"Character Error Rate (CER): {results['cer']:.3f} ({results['cer']*100:.1f}%)")
     else:
         print("No valid audio files found for evaluation.")
 
