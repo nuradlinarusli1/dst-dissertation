@@ -1,4 +1,6 @@
 #src/api_helper.py
+# Helper function to call the OpenRouter API for DST prediction.
+# Handles API requests, responses, and error handling for model calls.
 
 import os
 import requests
@@ -8,7 +10,8 @@ import json
 from dotenv import load_dotenv
 load_dotenv()
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+# API Key
+OPENROUTER_API_KEY = your_api_key_here
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Raise an error if the API key is not set
@@ -16,16 +19,9 @@ if not OPENROUTER_API_KEY:
     raise ValueError("OPENROUTER_API_KEY environment variable not set.")
 
 def call_model_api(prompt: str, model_id: str) -> str:
-    """
-    Calls the OpenRouter API with the given prompt and model ID, and returns the response content.
-
-    Args:
-        prompt (str): The input prompt to send to the model.
-        model_id (str): The ID of the model to use.
-
-    Returns:
-        str: The content of the model's response.
-    """
+    # Calls the OpenRouter API with the given prompt and model ID, and returns the response content.
+    # Takes prompt and model_id as input, constructs the API request, and handles the response.
+    # Returns the content of the model's response as a string. Raises errors for API failures or unexpected response formats.
 
     # HTTP headers and payload for the API request
     headers = {
