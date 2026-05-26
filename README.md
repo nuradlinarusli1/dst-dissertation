@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This project investigates the effectiveness of prompt-based Large Language Models (LLMs) for Dialogue State Tracking (DST) in task-oriented dialogue (TOD) systems without task-specific fine-tuning
+This project investigates the effectiveness of prompt-based Large Language Models (LLMs) for Dialogue State Tracking (DST) in task-oriented dialogue (TOD) systems without task-specific fine-tuning.
 
 The system evaluates zero-shot and few-shot prompting approaches on the MultiWOZ 2.2 dataset. Three approaches are evaluated:
 
@@ -16,7 +16,21 @@ The evaluated domains are:
 - Hotel
 - Train
 
----
+## Experimental Configuration
+
+The experiments reported in the dissertation were primarily conducted using:
+
+Model:
+qwen/qwen-2.5-7b-instruct
+
+API Provider:
+OpenRouter
+
+Temperature:
+0.0
+
+Domains:
+Restaurant, Hotel, Train
 
 ## Project Structure
 
@@ -29,7 +43,7 @@ src/
 │
 ├── models/
 │   ├── rule_based.py
-|   ├── run_wer_only.py
+│   ├── run_wer_only.py
 │   └── run_whisper.py
 │
 ├── helper/
@@ -61,9 +75,17 @@ data/
 
 ### Requirements
 
-Python 3.10+ (recommended).
+- Python 3.13 (recommended)
+- OpenRouter API key (for LLM-based experiments)
 
 ### Install dependencies
+
+Install all required packages using:
+
+```bash
+pip install -r requirements.txt
+```
+or alternatively
 
 ```bash
 pip install openai-whisper
@@ -71,6 +93,7 @@ pip install faster-whisper
 pip install jiwer
 pip install python-dotenv
 pip install requests
+pip install numpy
 ```
 
 ### Configure API key
